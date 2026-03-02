@@ -30,7 +30,7 @@ class UserController extends Controller
                 'created_at'
             ])
             ->with('roles')
-            ->paginate(10);
+            ->get(); // Changed from paginate(10) to get()
 
         return response()->json($users);
     }
