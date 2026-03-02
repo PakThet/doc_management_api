@@ -41,7 +41,7 @@ class AuthController extends Controller
             'token' => $token,
             'user' => [
                 'id' => $user->id,
-                'name' => $user->name,
+                'name' => trim($user->first_name . ' ' . $user->last_name),
                 'email' => $user->email,
             ],
         ]);
