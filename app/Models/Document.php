@@ -1,60 +1,67 @@
 <?php
+// app/Models/Document.php
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Document extends Model
 {
-    use SoftDeletes, HasFactory;
+    use HasFactory, SoftDeletes, LogsActivity;
 
     protected $fillable = [
+        'organization_id',
         'branch_id',
         'document_category_id',
         'document_prefix_id',
         'created_by',
+        'updated_by',
+        'document_code',
         'verification_token',
         'title',
-        'document_code',
         'description',
         'expiration_date',
-        'verification_status',
-        'file_path',
+        'status',
+        'visibility',
+        'file_name',
         'file_type',
         'file_size',
+        'mime_type',
+        'file_path',
+        'qr_token',
         'qr_code_path',
     ];
 
-    protected $dates = ['expiration_date'];
+    protected $casts = [
+        'expiration_date' => 'datetime',
+        'file_size' => 'integer',
+    ];
 
-    // Relationships
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['title', 'document_code', 'status', 'visibility', 'expiration_date'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
+
+    public function organization()
+    {
+        return $this->belongsTo(Organization::class);
+    }
+
     public function branch()
     {
         return $this->belongsTo(Branch::class);
     }
 
-    public function documentCategory()
+    public function category()
     {
-        return $this->belongsTo(DocumentCategory::class);
-    }
-
-    public function creator()
-    {
-        return $this->belongsTo(User::class, 'created_by');
-    }
-
-    public function scopeExpired($query, $value)
-    {
-        if ($value === 'true') {
-            return $query->whereDate('expiration_date', '<', now());
-        }
-
-        return $query->where(function ($q) {
-            $q->whereNull('expiration_date')
-                ->orWhereDate('expiration_date', '>=', now());
-        });
+        return $this->belongsTo(DocumentCategory::class, 'document_category_id');
     }
 
     public function prefix()
@@ -62,6 +69,39 @@ class Document extends Model
         return $this->belongsTo(DocumentPrefix::class, 'document_prefix_id');
     }
 
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 
-    
+    public function updater()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'published');
+    }
+
+    public function scopeByOrganization($query, $organizationId)
+    {
+        return $query->where('organization_id', $organizationId);
+    }
+
+    public function scopeByBranch($query, $branchId)
+    {
+        return $query->where('branch_id', $branchId);
+    }
+
+    public function scopeExpired($query)
+    {
+        return $query->where('expiration_date', '<', now())
+            ->where('status', '!=', 'expired');
+    }
+
+    public function scopeExpiringSoon($query, $days = 30)
+    {
+        return $query->whereBetween('expiration_date', [now(), now()->addDays($days)]);
+    }
 }

@@ -16,42 +16,36 @@ class DocumentFactory extends Factory
      * @return array<string, mixed>
      */
     public function definition(): array
-    {
-        $prefix = DocumentPrefix::inRandomOrder()->first();
-        return [
-            'branch_id' => \App\Models\Branch::factory(),
-            'document_category_id' => \App\Models\DocumentCategory::factory(),
-            'document_prefix_id' => $prefix?->id ?? 1,
-            'created_by' => \App\Models\User::factory(),
-            'document_code' => function () use ($prefix) {
+{
+    $prefix = \App\Models\DocumentPrefix::inRandomOrder()->first();
 
-                if (!$prefix) {
-                    return 'DOC-' . fake()->unique()->numberBetween(1000, 9999);
-                }
+    return [
+        'organization_id' => \App\Models\Organization::factory(),
+        'branch_id' => \App\Models\Branch::factory(),
+        'document_category_id' => \App\Models\DocumentCategory::factory(),
+        'document_prefix_id' => $prefix?->id,
 
-                $format = $prefix->format_pattern;
+        'created_by' => \App\Models\User::factory(),
 
-                $format = str_replace('YYYY', now()->format('Y'), $format);
-                $format = str_replace('MM', now()->format('m'), $format);
-                $format = str_replace('DD', now()->format('d'), $format);
+        'document_code' => 'DOC-' . fake()->unique()->numberBetween(1000, 9999),
+        'verification_token' => \Illuminate\Support\Str::uuid(),
 
-                $sequence = str_pad(fake()->numberBetween(1, 999), 3, '0', STR_PAD_LEFT);
+        'title' => fake()->sentence(),
+        'description' => fake()->paragraph(),
 
-                $format = str_replace('XXX', $sequence, $format);
+        'expiration_date' => fake()->optional()->date(),
 
-                return $prefix->prefix . $format;
-            },
-            'verification_token' => \Illuminate\Support\Str::uuid(),
-            'title' => fake()->sentence(),
-            'description' => fake()->paragraph(),
-            'expiration_date' => fake()->optional()->date(),
+        'status' => 'published',
+        'visibility' => 'private',
+        'version' => 1,
 
-            'verification_status' => 'active',
+        'file_name' => 'sample.pdf',
+        'file_type' => 'pdf',
+        'file_size' => fake()->numberBetween(1000, 500000),
+        'mime_type' => 'application/pdf',
 
-            'file_path' => null,
-            'file_type' => 'pdf',
-            'file_size' => fake()->numberBetween(1000, 500000),
-            'qr_code_path' => null,
-        ];
-    }
+        'qr_token' => \Illuminate\Support\Str::random(32),
+        'qr_code_path' => null,
+    ];
+}
 }

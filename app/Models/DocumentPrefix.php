@@ -1,16 +1,65 @@
 <?php
+// app/Models/DocumentPrefix.php
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class DocumentPrefix extends Model
 {
+    use HasFactory, SoftDeletes, LogsActivity;
+
     protected $fillable = [
+        'organization_id',
         'name',
         'prefix',
-        'format_pattern',
-        'is_active'
+        'separator',
+        'format',
+        'description',
+        'status',
+        'is_default',
+        'metadata',
     ];
 
+    protected $casts = [
+        'is_default' => 'boolean',
+        'metadata' => 'array',
+    ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'prefix', 'format', 'status', 'is_default'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
+
+    public function organization()
+    {
+        return $this->belongsTo(Organization::class);
+    }
+
+    public function documents()
+    {
+        return $this->hasMany(Document::class);
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active');
+    }
+
+    public function scopeByOrganization($query, $organizationId)
+    {
+        return $query->where('organization_id', $organizationId);
+    }
+
+    public function scopeDefault($query)
+    {
+        return $query->where('is_default', true);
+    }
 }

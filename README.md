@@ -7,6 +7,50 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+
+## 🛠️ Technical Stack
+
+* **Framework:** [Laravel 11](https://laravel.com/docs/11.x)
+* **Authorization:** [Spatie Laravel-Permission](https://spatie.be/docs/laravel-permission/v6/introduction) (Teams Mode enabled)
+* **Documentation:** [Scramble](https://scramble.dedoc.co/)
+
+
+## 🚀 HOW TO SET UP
+```bash
+git clone https://github.com/PakThet/doc_management_api.git
+cd doc_management_api
+cp .env.example .env
+composer install
+php artisan key:generate
+php artisan migrate:fresh --seed
+php artisan storage:link
+php artisan serve
+```
+
+## 📖 API Documentation
+The API documentation is automatically generated. You do not need to manually write Swagger annotations.
+
+Interactive UI Viewer: http://127.0.0.1:8000/docs/api
+
+OpenAPI JSON Spec: http://127.0.0.1:8000/docs/api.json
+
+
+## Accessing the API
+The seeder creates a global Super Admin for the first organization:
+
+Email: super.admin@system.com
+
+Password: password123
+
+
+## 🚀 USING DOCKER CONTAINER
+```bash
+git clone https://github.com/PakThet/doc_management_api.git
+cd doc_management_api
+make setup
+```
+
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

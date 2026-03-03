@@ -1,43 +1,48 @@
 <?php
+// database/seeders/DatabaseSeeder.php
 
 namespace Database\Seeders;
 
-use App\Models\Branch;
-use App\Models\Document;
-use App\Models\DocumentCategory;
-use App\Models\Organization;
-use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
      * Seed the application's database.
      */
     public function run(): void
     {
         $this->call([
-            RolePermissionSeeder::class,
+            // Then create organizations
+            OrganizationSeeder::class,
+            
+            // First, create permissions and roles
+            PermissionRoleSeeder::class,
+            
+            
+            // Create branches (depends on organizations)
+            BranchSeeder::class,
+            
+            // Create departments (depends on organizations)
+            DepartmentSeeder::class,
+            
+            // Create users (depends on organizations)
+            UserSeeder::class,
+            
+            // Create employees (depends on users, branches, departments)
+            EmployeeSeeder::class,
+            
+            // Create document categories and prefixes (depends on organizations)
+            DocumentCategorySeeder::class,
             DocumentPrefixSeeder::class,
+            
+            
+            // Optional: Create activity logs
+            ActivityLogSeeder::class,
+            // Create documents (depends on almost everything)
+            DocumentSeeder::class,
         ]);
-        $admin = User::factory()->create([
-            'email' => 'admin@example.com',
-            'password' => bcrypt('password'),
-        ]);
-        $org = Organization::factory()->create();
-        $branches = Branch::factory(5)->create([
-            'organization_id' => $org->id,
-        ]);
-        $categories = DocumentCategory::factory(5)->create();
-
-        // Create Documents
-        Document::factory(20)->create([
-            'branch_id' => $branches->random()->id,
-            'document_category_id' => $categories->random()->id,
-            'created_by' => $admin->id,
-        ]);
+        
+        $this->command->info('All database seeders completed successfully!');
     }
 }
