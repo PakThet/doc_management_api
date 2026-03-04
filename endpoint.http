@@ -1,0 +1,326 @@
+@baseUrl = http://localhost:8000/api
+@authToken = 2|WoTJ3jkNfZGNhAvZadF6V9URx9jmVivboXNblAYCfc593455
+
+### Public routes
+
+### Register
+POST {{baseUrl}}/register
+Content-Type: application/json
+
+{
+    "name": "John Doe",
+    "email": "john@example.com",
+    "password": "password",
+    "password_confirmation": "password"
+}
+
+### Login
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+    "email": "admin_1@example.com",
+    "password": "password"
+}
+
+### Forgot password
+POST {{baseUrl}}/forgot-password
+Content-Type: application/json
+
+{
+    "email": "john@example.com"
+}
+
+### Reset password
+POST {{baseUrl}}/reset-password
+Content-Type: application/json
+
+{
+    "token": "reset-token",
+    "email": "john@example.com",
+    "password": "newpassword",
+    "password_confirmation": "newpassword"
+}
+
+### Document verify (public)
+GET {{baseUrl}}/documents/verify/{{token}}
+
+
+### Protected routes (use Authorization header)
+
+### Logout
+POST {{baseUrl}}/logout
+Authorization: Bearer {{authToken}}
+
+### Me
+GET {{baseUrl}}/me
+Authorization: Bearer {{authToken}}
+
+### Users
+GET {{baseUrl}}/users
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+GET {{baseUrl}}/users/{{id}}
+Authorization: Bearer {{authToken}}
+
+POST {{baseUrl}}/users
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "name": "Jane Doe",
+    "email": "jane@example.com",
+    "password": "password",
+    "password_confirmation": "password"
+}
+
+PUT {{baseUrl}}/users/{{id}}
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "name": "Jane Updated"
+}
+
+DELETE {{baseUrl}}/users/{{id}}
+Authorization: Bearer {{authToken}}
+
+POST {{baseUrl}}/users/{{id}}/roles
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "roles": ["admin"]
+}
+
+### Organizations
+GET {{baseUrl}}/organizations
+Authorization: Bearer {{authToken}}
+
+POST {{baseUrl}}/organizations
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "name": "My Org"
+}
+
+GET {{baseUrl}}/organizations/{{id}}
+Authorization: Bearer {{authToken}}
+
+PUT {{baseUrl}}/organizations/{{id}}
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "name": "New Name"
+}
+
+DELETE {{baseUrl}}/organizations/{{id}}
+Authorization: Bearer {{authToken}}
+
+### Branches
+GET {{baseUrl}}/branches
+Authorization: Bearer {{authToken}}
+
+POST {{baseUrl}}/branches
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "name": "Main Branch",
+    "organization_id": 1
+}
+
+GET {{baseUrl}}/branches/{{id}}
+Authorization: Bearer {{authToken}}
+
+PUT {{baseUrl}}/branches/{{id}}
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "name": "Updated Branch"
+}
+
+DELETE {{baseUrl}}/branches/{{id}}
+Authorization: Bearer {{authToken}}
+
+GET {{baseUrl}}/branches/{{id}}/employees
+Authorization: Bearer {{authToken}}
+
+### Departments
+GET {{baseUrl}}/departments
+Authorization: Bearer {{authToken}}
+
+POST {{baseUrl}}/departments
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "name": "HR",
+    "branch_id": 1
+}
+
+GET {{baseUrl}}/departments/{{id}}
+Authorization: Bearer {{authToken}}
+
+PUT {{baseUrl}}/departments/{{id}}
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "name": "HR Updated"
+}
+
+DELETE {{baseUrl}}/departments/{{id}}
+Authorization: Bearer {{authToken}}
+
+GET {{baseUrl}}/departments-hierarchy
+Authorization: Bearer {{authToken}}
+
+### Employees
+GET {{baseUrl}}/employees
+Authorization: Bearer {{authToken}}
+
+POST {{baseUrl}}/employees
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "name": "Employee Name",
+    "email": "emp@example.com",
+    "department_id": 1
+}
+
+GET {{baseUrl}}/employees/{{id}}
+Authorization: Bearer {{authToken}}
+
+PUT {{baseUrl}}/employees/{{id}}
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "name": "Employee Updated"
+}
+
+DELETE {{baseUrl}}/employees/{{id}}
+Authorization: Bearer {{authToken}}
+
+### Document categories (apiResource)
+GET {{baseUrl}}/document-categories
+Authorization: Bearer {{authToken}}
+
+POST {{baseUrl}}/document-categories
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "name": "Category 1"
+}
+
+GET {{baseUrl}}/document-categories/{{id}}
+Authorization: Bearer {{authToken}}
+
+PUT {{baseUrl}}/document-categories/{{id}}
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "name": "Updated Category"
+}
+
+DELETE {{baseUrl}}/document-categories/{{id}}
+Authorization: Bearer {{authToken}}
+
+### Document prefixes
+GET {{baseUrl}}/document-prefixes
+Authorization: Bearer {{authToken}}
+
+POST {{baseUrl}}/document-prefixes
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "prefix": "DOC",
+    "description": "Documents"
+}
+
+GET {{baseUrl}}/document-prefixes/{{id}}
+Authorization: Bearer {{authToken}}
+
+PUT {{baseUrl}}/document-prefixes/{{id}}
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "description": "Updated"
+}
+
+DELETE {{baseUrl}}/document-prefixes/{{id}}
+Authorization: Bearer {{authToken}}
+
+### Documents
+GET {{baseUrl}}/documents
+Authorization: Bearer {{authToken}}
+
+POST {{baseUrl}}/documents
+Authorization: Bearer {{authToken}}
+Content-Type: multipart/form-data
+
+# include file upload fields accordingly
+
+GET {{baseUrl}}/documents/{{id}}
+Authorization: Bearer {{authToken}}
+
+PUT {{baseUrl}}/documents/{{id}}
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "title": "Updated Title"
+}
+
+DELETE {{baseUrl}}/documents/{{id}}
+Authorization: Bearer {{authToken}}
+
+POST {{baseUrl}}/documents/{{id}}/publish
+Authorization: Bearer {{authToken}}
+
+### Roles & Permissions
+GET {{baseUrl}}/roles
+Authorization: Bearer {{authToken}}
+
+POST {{baseUrl}}/roles
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "name": "manager"
+}
+
+PUT {{baseUrl}}/roles/{{id}}
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "name": "manager_updated"
+}
+
+DELETE {{baseUrl}}/roles/{{id}}
+Authorization: Bearer {{authToken}}
+
+POST {{baseUrl}}/roles/{{id}}/permissions
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "permissions": ["view users"]
+}
+
+GET {{baseUrl}}/permissions
+Authorization: Bearer {{authToken}}
+
+GET {{baseUrl}}/users/{{id}}/permissions
+Authorization: Bearer {{authToken}}

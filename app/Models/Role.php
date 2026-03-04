@@ -2,8 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\Permission\Models\Role as SpatieRole;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class Role extends SpatieRole
 {
@@ -13,8 +14,13 @@ class Role extends SpatieRole
         'guard_name',
     ];
 
-    public function organization(): BelongsTo
+    protected static function booted()
     {
-        return $this->belongsTo(Organization::class);
+        static::addGlobalScope('organization', function (Builder $builder) {
+            if (Auth::check()) {
+                $builder->where('organization_id', Auth::user()->organization_id);
+            }
+        });
     }
+
 }

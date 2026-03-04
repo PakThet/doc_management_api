@@ -8,10 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
-
+use App\Traits\HasOrganizationScope;
 class Branch extends Model
 {
-    use HasFactory, SoftDeletes, LogsActivity;
+    use HasFactory, SoftDeletes, LogsActivity, HasOrganizationScope;
 
     protected $fillable = [
         'organization_id',
@@ -60,10 +60,5 @@ class Branch extends Model
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
-    }
-
-    public function scopeByOrganization($query, $organizationId)
-    {
-        return $query->where('organization_id', $organizationId);
     }
 }

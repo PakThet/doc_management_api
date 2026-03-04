@@ -27,7 +27,7 @@ class BranchResource extends JsonResource
             'settings' => $this->settings,
             'employees_count' => $this->whenCounted('employees'),
             'documents_count' => $this->whenCounted('documents'),
-            'organization' => new OrganizationResource($this->whenLoaded('organization')),
+            // 'organization' => new OrganizationResource($this->whenLoaded('organization')),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'deleted_at' => $this->deleted_at,

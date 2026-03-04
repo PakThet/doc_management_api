@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Spatie\Permission\Models\Permission;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class PermissionController extends BaseController
 {
@@ -25,6 +26,24 @@ class PermissionController extends BaseController
 
         return $this->sendPaginated($permissions, 'Permissions retrieved successfully');
     }
+
+    public function getPermissions($userId)
+{
+    $user = \App\Models\User::findOrFail($userId);
+
+    if ($user->organization_id !== Auth::user()->organization_id) {
+        return response()->json([
+            'message' => 'Unauthorized'
+        ], 403);
+    }
+
+    $permissions = $user->getAllPermissions();
+
+    return response()->json([
+        'user' => $user->only(['id','first_name','last_name','email']),
+        'permissions' => $permissions
+    ]);
+}
 
     /**
      * Get permission groups

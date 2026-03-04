@@ -3,23 +3,16 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\PermissionRegistrar;
 use App\Models\Organization;
+use App\Models\Role;
+use App\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 
 class PermissionRoleSeeder extends Seeder
 {
     public function run(): void
     {
-        // Clear cache
         app(PermissionRegistrar::class)->forgetCachedPermissions();
-
-        /*
-        |---------------------------------------
-        | 1. Create Global Permissions
-        |---------------------------------------
-        */
 
         $permissions = [
             'view users','create users','edit users','delete users',
@@ -35,76 +28,82 @@ class PermissionRoleSeeder extends Seeder
             'view dashboard','view statistics',
         ];
 
+        /*
+        |--------------------------------------------------------------------------
+        | 1️⃣ GLOBAL SUPER ADMIN (NO ORGANIZATION)
+        |--------------------------------------------------------------------------
+        */
+
         foreach ($permissions as $permission) {
             Permission::firstOrCreate([
                 'name' => $permission,
                 'guard_name' => 'api',
+                'organization_id' => null,
             ]);
         }
 
+        $globalSuperAdmin = Role::firstOrCreate([
+            'name' => 'Super Admin',
+            'guard_name' => 'api',
+            'organization_id' => null,
+        ]);
+
+        $globalSuperAdmin->syncPermissions(
+            Permission::whereNull('organization_id')->get()
+        );
+
         /*
-        |---------------------------------------
-        | 2. Create Roles Per Organization
-        |---------------------------------------
+        |--------------------------------------------------------------------------
+        | 2️⃣ ORGANIZATION ROLES
+        |--------------------------------------------------------------------------
         */
 
         $organizations = Organization::all();
 
         foreach ($organizations as $organization) {
 
-            app(PermissionRegistrar::class)
-                ->setPermissionsTeamId($organization->id);
-
-            $roleNames = [
-                'super-admin',
-                'admin',
-                'manager',
-                'hr-manager',
-                'document-controller',
-                'employee'
-            ];
-
-            $roles = [];
-
-            foreach ($roleNames as $name) {
-                $roles[$name] = Role::firstOrCreate([
-                    'name' => $name,
+            foreach ($permissions as $permission) {
+                Permission::firstOrCreate([
+                    'name' => $permission,
                     'guard_name' => 'api',
+                    'organization_id' => $organization->id,
                 ]);
             }
 
-            // Assign Permissions
+            $orgPermissions = Permission::where('organization_id', $organization->id)->get();
 
-            $roles['super-admin']->syncPermissions(Permission::all());
-
-            $roles['admin']->syncPermissions([
-                'view users','create users','edit users',
-                'view branches','view departments','view employees',
-                'view documents','verify documents',
-                'view dashboard','view statistics'
+            $admin = Role::firstOrCreate([
+                'name' => 'Admin',
+                'guard_name' => 'api',
+                'organization_id' => $organization->id,
             ]);
 
-            $roles['manager']->syncPermissions([
-                'view employees','create employees','edit employees',
-                'view documents','view dashboard'
+            $manager = Role::firstOrCreate([
+                'name' => 'Manager',
+                'guard_name' => 'api',
+                'organization_id' => $organization->id,
             ]);
 
-            $roles['hr-manager']->syncPermissions([
-                'view employees','create employees','edit employees','delete employees',
-                'view departments','view dashboard','view statistics'
+            $staff = Role::firstOrCreate([
+                'name' => 'Staff',
+                'guard_name' => 'api',
+                'organization_id' => $organization->id,
             ]);
 
-            $roles['document-controller']->syncPermissions([
-                'view documents','create documents','edit documents','delete documents','verify documents',
-                'view document-categories','view document-prefixes',
-                'view dashboard'
-            ]);
+            $admin->syncPermissions($orgPermissions);
 
-            $roles['employee']->syncPermissions([
-                'view documents'
-            ]);
+            $manager->syncPermissions(
+                $orgPermissions->whereNotIn('name', [
+                    'create roles','edit roles','delete roles',
+                    'assign permissions','delete organizations'
+                ])
+            );
+
+            $staff->syncPermissions(
+                $orgPermissions->filter(fn ($p) =>
+                    str_starts_with($p->name, 'view')
+                )
+            );
         }
-
-        $this->command->info('✅ Roles and Permissions seeded successfully.');
     }
 }

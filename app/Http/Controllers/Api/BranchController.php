@@ -1,12 +1,15 @@
 <?php
-// app/Http/Controllers/Api/BranchController.php
 
 namespace App\Http\Controllers\Api;
 
 use App\Models\Branch;
 use App\Http\Requests\Api\BranchRequest;
 use App\Http\Resources\BranchResource;
+use App\Http\Resources\EmployeeResource;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Spatie\QueryBuilder\QueryBuilder;
+use Spatie\QueryBuilder\AllowedFilter;
 
 class BranchController extends BaseController
 {
@@ -15,95 +18,118 @@ class BranchController extends BaseController
      */
     public function index(Request $request)
     {
-        $branches = Branch::with('organization')
-            ->byOrganization($this->getOrganizationId())
-            ->when($request->search, function ($query, $search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                        ->orWhere('code', 'like', "%{$search}%")
-                        ->orWhere('city', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%");
-                });
-            })
-            ->when($request->status, function ($query, $status) {
-                $query->where('status', $status);
-            })
-            ->when($request->city, function ($query, $city) {
-                $query->where('city', $city);
-            })
-            ->when($request->country, function ($query, $country) {
-                $query->where('country', $country);
-            })
-            ->orderBy($request->sort_by ?? 'name', $request->sort_direction ?? 'asc')
-            ->paginate($request->per_page ?? 15);
+        $user = Auth::user();
 
-        return $this->sendPaginated(BranchResource::collection($branches), 'Branches retrieved successfully');
+        $allowedFilters = [
+            AllowedFilter::partial('name'),
+            AllowedFilter::partial('code'),
+            AllowedFilter::partial('city'),
+            AllowedFilter::partial('country'),
+            AllowedFilter::exact('status'),
+        ];
+
+        if ($user->organization_id === null) {
+            $allowedFilters[] = AllowedFilter::exact('organization_id');
+        }
+
+        $branches = QueryBuilder::for(Branch::class)
+            ->allowedFilters($allowedFilters)
+
+            ->allowedSorts([
+                'name',
+                'city',
+                'created_at'
+            ])
+
+            ->allowedIncludes([
+                'organization',
+                'employees'
+            ])
+
+            ->defaultSort('name')
+
+            ->paginate($request->per_page ?? 15)
+            ->appends($request->query());
+
+        return $this->sendPaginated(
+            BranchResource::collection($branches),
+            'Branches retrieved successfully'
+        );
     }
 
-    /**
-     * Store a newly created branch
-     */
     public function store(BranchRequest $request)
     {
         $data = $request->validated();
-        $data['organization_id'] = $this->getOrganizationId();
+        $user = Auth::user();
+
+        if ($user->organization_id !== null) {
+            $data['organization_id'] = $user->organization_id;
+        }
 
         $branch = Branch::create($data);
 
-        return $this->sendResponse(new BranchResource($branch), 'Branch created successfully', 201);
+        return $this->sendResponse(
+            new BranchResource($branch),
+            'Branch created successfully',
+            201
+        );
     }
 
-    /**
-     * Display the specified branch
-     */
     public function show(Branch $branch)
     {
         return $this->sendResponse(
-            new BranchResource($branch->load(['organization', 'employees', 'documents'])),
+            new BranchResource(
+                $branch->load(['organization', 'employees', 'documents'])
+            ),
             'Branch retrieved successfully'
         );
     }
 
-    /**
-     * Update the specified branch
-     */
     public function update(BranchRequest $request, Branch $branch)
     {
         $branch->update($request->validated());
 
-        return $this->sendResponse(new BranchResource($branch), 'Branch updated successfully');
+        return $this->sendResponse(
+            new BranchResource($branch),
+            'Branch updated successfully'
+        );
     }
 
-    /**
-     * Remove the specified branch
-     */
     public function destroy(Branch $branch)
     {
-        // Check if branch has employees
-        if ($branch->employees()->count() > 0) {
-            return $this->sendError('Cannot delete branch with associated employees', [], 422);
+        if ($branch->employees()->exists()) {
+            return $this->sendError(
+                'Cannot delete branch with associated employees.',
+                [],
+                422
+            );
         }
 
         $branch->delete();
 
-        return $this->sendResponse(null, 'Branch deleted successfully');
+        return $this->sendResponse(
+            null,
+            'Branch deleted successfully'
+        );
     }
 
-    /**
-     * Get branch employees
-     */
     public function employees(Branch $branch, Request $request)
     {
-        $employees = $branch->employees()
-            ->with(['department', 'user'])
-            ->when($request->status, function ($query, $status) {
-                $query->where('status', $status);
-            })
-            ->when($request->department_id, function ($query, $departmentId) {
-                $query->where('department_id', $departmentId);
-            })
-            ->paginate($request->per_page ?? 15);
+        $employees = QueryBuilder::for($branch->employees())
+            ->allowedFilters([
+                AllowedFilter::exact('status'),
+                AllowedFilter::exact('department_id'),
+            ])
+            ->allowedIncludes([
+                'department',
+                'user'
+            ])
+            ->paginate($request->per_page ?? 15)
+            ->appends($request->query());
 
-        return $this->sendPaginated($employees, 'Branch employees retrieved successfully');
+        return $this->sendPaginated(
+            EmployeeResource::collection($employees),
+            'Branch employees retrieved successfully'
+        );
     }
 }

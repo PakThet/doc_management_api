@@ -2,108 +2,74 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Models\Role;
+use App\Models\Permission;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\PermissionRegistrar;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
 
 class RoleController extends BaseController
 {
-    /**
-     * Set Team Context
-     */
-    private function setTeamContext(): void
-    {
-        $user = Auth::user();
-
-        if (!$user || !$user->organization_id) {
-            abort(403, 'Organization context is missing.');
-        }
-
-        app()[PermissionRegistrar::class]
-            ->setPermissionsTeamId($user->organization_id);
-    }
-
-    /**
-     * List Roles
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | List Roles
+    |--------------------------------------------------------------------------
+    */
     public function index(Request $request): JsonResponse
     {
-        $this->setTeamContext();
-
-        $roles = Role::with('permissions')
-            ->when($request->search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%");
-            })
+        $roles = Role::where('organization_id', Auth::user()->organization_id)
+            ->with('permissions')
             ->orderBy('name')
             ->paginate($request->per_page ?? 15);
 
         return $this->sendPaginated($roles, 'Roles retrieved successfully');
     }
 
-    /**
-     * Create Role
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | Create Role
+    |--------------------------------------------------------------------------
+    */
     public function store(Request $request): JsonResponse
     {
-        $this->setTeamContext();
-
         $request->validate([
             'name' => 'required|string|max:255',
             'permissions' => 'sometimes|array',
-            'permissions.*' => 'exists:permissions,name',
+            'permissions.*' => 'string',
         ]);
 
         $role = Role::create([
             'name' => $request->name,
             'guard_name' => 'api',
+            'organization_id' => Auth::user()->organization_id,
         ]);
 
         if ($request->filled('permissions')) {
-            $role->syncPermissions($request->permissions);
+
+            $permissions = Permission::whereIn('name', $request->permissions)
+                ->where('organization_id', Auth::user()->organization_id)
+                ->get();
+
+            $role->syncPermissions($permissions);
         }
 
-        return $this->sendResponse(
-            $role->load('permissions'),
-            'Role created successfully',
-            201
-        );
+        return $this->sendResponse($role->load('permissions'), 'Role created successfully', 201);
     }
 
-    /**
-     * Show Role
-     */
-    public function show($id): JsonResponse
-    {
-        $this->setTeamContext();
-
-        $role = Role::findOrFail($id);
-
-        return $this->sendResponse(
-            $role->load('permissions'),
-            'Role retrieved successfully'
-        );
-    }
-
-    /**
-     * Update Role
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | Update Role
+    |--------------------------------------------------------------------------
+    */
     public function update(Request $request, $id): JsonResponse
     {
-        $this->setTeamContext();
-
-        $role = Role::findOrFail($id);
-
-        if ($role->name === 'super-admin') {
-            return $this->sendError('Super-admin role cannot be modified', [], 403);
-        }
+        $role = Role::where('organization_id', Auth::user()->organization_id)
+            ->findOrFail($id);
 
         $request->validate([
             'name' => 'required|string|max:255',
             'permissions' => 'sometimes|array',
-            'permissions.*' => 'exists:permissions,name',
+            'permissions.*' => 'string',
         ]);
 
         $role->update([
@@ -111,49 +77,53 @@ class RoleController extends BaseController
         ]);
 
         if ($request->filled('permissions')) {
-            $role->syncPermissions($request->permissions);
+
+            $permissions = Permission::whereIn('name', $request->permissions)
+                ->where('organization_id', Auth::user()->organization_id)
+                ->get();
+
+            $role->syncPermissions($permissions);
         }
 
-        return $this->sendResponse(
-            $role->load('permissions'),
-            'Role updated successfully'
-        );
+        return $this->sendResponse($role->load('permissions'), 'Role updated successfully');
     }
 
-    /**
-     * Delete Role
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | Delete Role
+    |--------------------------------------------------------------------------
+    */
     public function destroy($id): JsonResponse
     {
-        $this->setTeamContext();
-
-        $role = Role::findOrFail($id);
-
-        if ($role->name === 'super-admin') {
-            return $this->sendError('Super-admin role cannot be deleted', [], 403);
-        }
-
-        if ($role->users()->exists()) {
-            return $this->sendError('Cannot delete role assigned to users', [], 422);
-        }
+        $role = Role::where('organization_id', Auth::user()->organization_id)
+            ->findOrFail($id);
 
         $role->delete();
 
         return $this->sendResponse(null, 'Role deleted successfully');
     }
 
-    /**
-     * Get Permissions
-     */
-    public function permissions(): JsonResponse
+    /*
+    |--------------------------------------------------------------------------
+    | Assign Permissions
+    |--------------------------------------------------------------------------
+    */
+    public function assignPermissions(Request $request, $id): JsonResponse
     {
-        $this->setTeamContext();
+        $role = Role::where('organization_id', Auth::user()->organization_id)
+            ->findOrFail($id);
 
-        $permissions = Permission::orderBy('name')->get();
+        $request->validate([
+            'permissions' => 'required|array',
+            'permissions.*' => 'string',
+        ]);
 
-        return $this->sendResponse(
-            $permissions,
-            'Permissions retrieved successfully'
-        );
+        $permissions = Permission::whereIn('name', $request->permissions)
+            ->where('organization_id', Auth::user()->organization_id)
+            ->get();
+
+        $role->syncPermissions($permissions);
+
+        return $this->sendResponse($role->load('permissions'), 'Permissions assigned successfully');
     }
 }
