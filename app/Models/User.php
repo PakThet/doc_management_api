@@ -80,6 +80,11 @@ class User extends Authenticatable
         return "{$this->first_name} {$this->last_name}";
     }
 
+    public function isSuperAdmin(): bool
+    {
+        return $this->hasRole('Super Admin');
+    }
+
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
@@ -87,6 +92,14 @@ class User extends Authenticatable
 
     public function scopeByOrganization($query, $organizationId)
     {
+        if (auth()->check() && auth()->user()->isSuperAdmin()) {
+            return $query;
+        }
+
+        if (is_null($organizationId)) {
+            return $query;
+        }
+
         return $query->where('organization_id', $organizationId);
     }
 }

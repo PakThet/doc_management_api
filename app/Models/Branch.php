@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
 use App\Traits\HasOrganizationScope;
+
 class Branch extends Model
 {
     use HasFactory, SoftDeletes, LogsActivity, HasOrganizationScope;

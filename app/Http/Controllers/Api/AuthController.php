@@ -52,7 +52,7 @@ class AuthController extends BaseController
         ]);
 
         // Assign admin role
-        $user->assignRole('admin');
+        $user->assignRole('Admin');
 
         // Create token
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -71,34 +71,38 @@ class AuthController extends BaseController
      * @param Request $request
      * @return JsonResponse
      */
-    public function login(Request $request)
-    {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
+    public function login(Request $request): JsonResponse
+{
+    $request->validate([
+        'email' => 'required|email',
+        'password' => 'required',
+    ]);
+
+    $user = User::with('organization')
+        ->where('email', $request->email)
+        ->first();
+
+    if (! $user || ! Hash::check($request->password, $user->password)) {
+        throw ValidationException::withMessages([
+            'email' => ['The provided credentials are incorrect.'],
         ]);
-
-        if (!Auth::attempt($request->only('email', 'password'))) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
-            ]);
-        }
-
-        $user = User::with('organization')->find(Auth::id());
-
-        if ($user->status !== 'active') {
-            Auth::logout();
-            return $this->sendError('Your account is not active.', [], 403);
-        }
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return $this->sendResponse([
-            'token_type' => 'Bearer',
-            'token' => $token,
-            'user' => $user,
-        ], 'Login successful');
     }
+
+    if ($user->status !== 'active') {
+        return $this->sendError('Your account is not active.', [], 403);
+    }
+
+    // Optional: delete old tokens (recommended)
+    $user->tokens()->delete();
+
+    $token = $user->createToken('auth_token')->plainTextToken;
+
+    return $this->sendResponse([
+        'token_type' => 'Bearer',
+        'token' => $token,
+        'user' => $user,
+    ], 'Login successful');
+}
 
     /**
      * Logout user

@@ -8,7 +8,6 @@ use App\Http\Resources\UserResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Carbon;
-use Spatie\Permission\Models\Role;
 
 class UserController extends BaseController
 {
@@ -16,31 +15,30 @@ class UserController extends BaseController
      * List Users
      */
     public function index(Request $request)
-    {
-        $users = User::with(['organization', 'employee'])
-            ->byOrganization($this->getOrganizationId())
-            ->when($request->search, function ($query, $search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('first_name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%")
-                        ->orWhere('phone', 'like', "%{$search}%");
-                });
-            })
-            ->when($request->status, function ($query, $status) {
-                $query->where('status', $status);
-            })
-            ->when($request->role, function ($query, $role) {
-                $query->role($role);
-            })
-            ->orderBy($request->sort_by ?? 'created_at', $request->sort_direction ?? 'desc')
-            ->paginate($request->per_page ?? 15);
+{
+    $users = User::with(['organization', 'employee'])
+        ->when($request->search, function ($query, $search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%");
+            });
+        })
+        ->when($request->status, function ($query, $status) {
+            $query->where('status', $status);
+        })
+        ->when($request->role, function ($query, $role) {
+            $query->role($role);
+        })
+        ->orderBy($request->sort_by ?? 'created_at', $request->sort_direction ?? 'desc')
+        ->paginate($request->per_page ?? 15);
 
-        return $this->sendPaginated(
-            UserResource::collection($users),
-            'Users retrieved successfully'
-        );
-    }
+    return $this->sendPaginated(
+        UserResource::collection($users),
+        'Users retrieved successfully'
+    );
+}
 
     /**
      * Create User

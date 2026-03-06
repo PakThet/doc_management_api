@@ -8,10 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
-
+use App\Traits\HasOrganizationScope;
 class Department extends Model
 {
-    use HasFactory, SoftDeletes, LogsActivity;
+    use HasFactory, SoftDeletes, LogsActivity, HasOrganizationScope;
 
     protected $fillable = [
         'organization_id',
@@ -73,6 +73,14 @@ class Department extends Model
 
     public function scopeByOrganization($query, $organizationId)
     {
+        if (auth()->check() && auth()->user()->isSuperAdmin()) {
+            return $query;
+        }
+
+        if (is_null($organizationId)) {
+            return $query;
+        }
+
         return $query->where('organization_id', $organizationId);
     }
 

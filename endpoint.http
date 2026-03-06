@@ -1,6 +1,7 @@
 @baseUrl = http://localhost:8000/api
-@authToken = 2|WoTJ3jkNfZGNhAvZadF6V9URx9jmVivboXNblAYCfc593455
-
+@TokenSuperAdmin = 2|ueaa9odz0fYoBY3ilV8VIdflPYp1QR2BNJ6TB0ba6a960433
+@TokenAdmin = 3|innXPjpPK8i2OLHV6DcvP2dOfaqaQql6ey5bS1Nb42ecbb01
+@tokenStaff = 4|OzJBVWESPbF82O0kfsuXfykzC08Pjs4t8N6dkCGs6a004a0f
 ### Public routes
 
 ### Register
@@ -14,12 +15,31 @@ Content-Type: application/json
     "password_confirmation": "password"
 }
 
-### Login
+### Login Super Admin
 POST {{baseUrl}}/login
 Content-Type: application/json
+Accept: application/json
+
+{
+    "email": "superadmin@system.com",
+    "password": "password"
+}
+### Login Admin
+POST {{baseUrl}}/login
+Content-Type: application/json
+Accept: application/json
 
 {
     "email": "admin_1@example.com",
+    "password": "password"
+}
+### Login Staff User
+POST {{baseUrl}}/login
+Content-Type: application/json
+Accept: application/json
+
+{
+    "email": "staff_1@example.com",
     "password": "password"
 }
 
@@ -54,16 +74,18 @@ Authorization: Bearer {{authToken}}
 
 ### Me
 GET {{baseUrl}}/me
-Authorization: Bearer {{authToken}}
+Authorization: Bearer {{{{tokenStaff}}}}
 
 ### Users
 GET {{baseUrl}}/users
-Authorization: Bearer {{authToken}}
+Authorization: Bearer {{tokenStaff}}
 Accept: application/json
 
+### User Spcified
 GET {{baseUrl}}/users/{{id}}
 Authorization: Bearer {{authToken}}
 
+### Create New Users
 POST {{baseUrl}}/users
 Authorization: Bearer {{authToken}}
 Content-Type: application/json
@@ -75,6 +97,7 @@ Content-Type: application/json
     "password_confirmation": "password"
 }
 
+### Update User
 PUT {{baseUrl}}/users/{{id}}
 Authorization: Bearer {{authToken}}
 Content-Type: application/json
@@ -83,9 +106,12 @@ Content-Type: application/json
     "name": "Jane Updated"
 }
 
+### Remove User
 DELETE {{baseUrl}}/users/{{id}}
 Authorization: Bearer {{authToken}}
 
+
+### Assign Roles to User
 POST {{baseUrl}}/users/{{id}}/roles
 Authorization: Bearer {{authToken}}
 Content-Type: application/json
@@ -106,9 +132,12 @@ Content-Type: application/json
     "name": "My Org"
 }
 
+###
 GET {{baseUrl}}/organizations/{{id}}
 Authorization: Bearer {{authToken}}
 
+
+###
 PUT {{baseUrl}}/organizations/{{id}}
 Authorization: Bearer {{authToken}}
 Content-Type: application/json
@@ -117,15 +146,19 @@ Content-Type: application/json
     "name": "New Name"
 }
 
+###
 DELETE {{baseUrl}}/organizations/{{id}}
 Authorization: Bearer {{authToken}}
 
 ### Branches
 GET {{baseUrl}}/branches
-Authorization: Bearer {{authToken}}
+Accept: application/json
+Authorization: Bearer {{tokenStaff}}
 
+###
 POST {{baseUrl}}/branches
-Authorization: Bearer {{authToken}}
+Accept: application/json
+Authorization: Bearer {{tokenStaff}}
 Content-Type: application/json
 
 {
@@ -133,9 +166,11 @@ Content-Type: application/json
     "organization_id": 1
 }
 
+###
 GET {{baseUrl}}/branches/{{id}}
 Authorization: Bearer {{authToken}}
 
+###
 PUT {{baseUrl}}/branches/{{id}}
 Authorization: Bearer {{authToken}}
 Content-Type: application/json
@@ -144,9 +179,12 @@ Content-Type: application/json
     "name": "Updated Branch"
 }
 
+
+###
 DELETE {{baseUrl}}/branches/{{id}}
 Authorization: Bearer {{authToken}}
 
+###
 GET {{baseUrl}}/branches/{{id}}/employees
 Authorization: Bearer {{authToken}}
 
@@ -154,6 +192,7 @@ Authorization: Bearer {{authToken}}
 GET {{baseUrl}}/departments
 Authorization: Bearer {{authToken}}
 
+###
 POST {{baseUrl}}/departments
 Authorization: Bearer {{authToken}}
 Content-Type: application/json
@@ -163,9 +202,11 @@ Content-Type: application/json
     "branch_id": 1
 }
 
+###
 GET {{baseUrl}}/departments/{{id}}
 Authorization: Bearer {{authToken}}
 
+###
 PUT {{baseUrl}}/departments/{{id}}
 Authorization: Bearer {{authToken}}
 Content-Type: application/json
@@ -174,16 +215,20 @@ Content-Type: application/json
     "name": "HR Updated"
 }
 
+###
 DELETE {{baseUrl}}/departments/{{id}}
 Authorization: Bearer {{authToken}}
 
+###
 GET {{baseUrl}}/departments-hierarchy
-Authorization: Bearer {{authToken}}
+Authorization: Bearer {{TokenSuperAdmin}}
 
 ### Employees
 GET {{baseUrl}}/employees
-Authorization: Bearer {{authToken}}
+Authorization: Bearer {{TokenAdmin}}
+Accept: application/json
 
+###
 POST {{baseUrl}}/employees
 Authorization: Bearer {{authToken}}
 Content-Type: application/json
@@ -194,9 +239,12 @@ Content-Type: application/json
     "department_id": 1
 }
 
-GET {{baseUrl}}/employees/{{id}}
-Authorization: Bearer {{authToken}}
+###
+GET {{baseUrl}}/employees/30
+Authorization: Bearer {{TokenAdmin}}
+Accept: application/json
 
+###
 PUT {{baseUrl}}/employees/{{id}}
 Authorization: Bearer {{authToken}}
 Content-Type: application/json
@@ -210,7 +258,7 @@ Authorization: Bearer {{authToken}}
 
 ### Document categories (apiResource)
 GET {{baseUrl}}/document-categories
-Authorization: Bearer {{authToken}}
+Authorization: Bearer {{tokenStaff}}
 
 POST {{baseUrl}}/document-categories
 Authorization: Bearer {{authToken}}
@@ -236,7 +284,7 @@ Authorization: Bearer {{authToken}}
 
 ### Document prefixes
 GET {{baseUrl}}/document-prefixes
-Authorization: Bearer {{authToken}}
+Authorization: Bearer {{tokenStaff}}
 
 POST {{baseUrl}}/document-prefixes
 Authorization: Bearer {{authToken}}
@@ -263,7 +311,7 @@ Authorization: Bearer {{authToken}}
 
 ### Documents
 GET {{baseUrl}}/documents
-Authorization: Bearer {{authToken}}
+Authorization: Bearer {{tokenStaff}}
 
 POST {{baseUrl}}/documents
 Authorization: Bearer {{authToken}}
@@ -290,9 +338,12 @@ Authorization: Bearer {{authToken}}
 
 ### Roles & Permissions
 GET {{baseUrl}}/roles
-Authorization: Bearer {{authToken}}
+Authorization: Bearer {{tokenStaff}}
+Accept: application/json
 
+###
 POST {{baseUrl}}/roles
+Accept: {{$aadToken}}
 Authorization: Bearer {{authToken}}
 Content-Type: application/json
 
@@ -300,6 +351,7 @@ Content-Type: application/json
     "name": "manager"
 }
 
+###
 PUT {{baseUrl}}/roles/{{id}}
 Authorization: Bearer {{authToken}}
 Content-Type: application/json
@@ -308,9 +360,11 @@ Content-Type: application/json
     "name": "manager_updated"
 }
 
+###
 DELETE {{baseUrl}}/roles/{{id}}
 Authorization: Bearer {{authToken}}
 
+###
 POST {{baseUrl}}/roles/{{id}}/permissions
 Authorization: Bearer {{authToken}}
 Content-Type: application/json
@@ -319,8 +373,10 @@ Content-Type: application/json
     "permissions": ["view users"]
 }
 
+###
 GET {{baseUrl}}/permissions
 Authorization: Bearer {{authToken}}
 
+###
 GET {{baseUrl}}/users/{{id}}/permissions
 Authorization: Bearer {{authToken}}

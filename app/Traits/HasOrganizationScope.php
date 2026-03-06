@@ -2,6 +2,7 @@
 
 namespace App\Traits;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
@@ -9,21 +10,34 @@ trait HasOrganizationScope
 {
     protected static function bootHasOrganizationScope()
     {
+        // Apply global scope
         static::addGlobalScope('organization', function (Builder $builder) {
-
-            if (!Auth::check()) {
-                return;
-            }
 
             $user = Auth::user();
 
-            // 👑 Super Admin (organization_id = null) → NO FILTER
-            if ($user->organization_id === null) {
+            if (!$user) {
+                return;
+            }
+            /** @var User|null $user */
+            // Super Admin sees everything
+            if ($user->hasRole('Super Admin')) {
                 return;
             }
 
-            // 🏢 Normal user → filter by organization
-            $builder->where('organization_id', $user->organization_id);
+            $builder->where(
+                $builder->getModel()->getTable() . '.organization_id',
+                $user->organization_id
+            );
+        });
+
+        // Auto set organization_id when creating
+        static::creating(function ($model) {
+            /** @var User|null $user */
+            $user = Auth::user();
+
+            if ($user && !$user->hasRole('Super Admin')) {
+                $model->organization_id = $user->organization_id;
+            }
         });
     }
 }

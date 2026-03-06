@@ -18,7 +18,7 @@ class AuthorizationService
     {
         $role = Role::create([
             'name' => $name,
-            'guard_name' => 'web',
+            'guard_name' => 'api',
             'organization_id' => $organization->id,
         ]);
 
@@ -36,7 +36,7 @@ class AuthorizationService
     {
         return Permission::create([
             'name' => $name,
-            'guard_name' => 'web',
+            'guard_name' => 'api',
             'organization_id' => $organization->id,
         ]);
     }

@@ -15,17 +15,47 @@ class PermissionRoleSeeder extends Seeder
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         $permissions = [
-            'view users','create users','edit users','delete users',
-            'view organizations','create organizations','edit organizations','delete organizations',
-            'view branches','create branches','edit branches','delete branches',
-            'view departments','create departments','edit departments','delete departments',
-            'view employees','create employees','edit employees','delete employees',
-            'view documents','create documents','edit documents','delete documents','verify documents',
-            'view document-categories','create document-categories','edit document-categories','delete document-categories',
-            'view document-prefixes','create document-prefixes','edit document-prefixes','delete document-prefixes',
-            'view roles','create roles','edit roles','delete roles',
-            'view permissions','assign permissions',
-            'view dashboard','view statistics',
+            'view users',
+            'create users',
+            'edit users',
+            'delete users',
+            'view organizations',
+            'create organizations',
+            'edit organizations',
+            'delete organizations',
+            'view branches',
+            'create branches',
+            'edit branches',
+            'delete branches',
+            'view departments',
+            'create departments',
+            'edit departments',
+            'delete departments',
+            'view employees',
+            'create employees',
+            'edit employees',
+            'delete employees',
+            'view documents',
+            'create documents',
+            'edit documents',
+            'delete documents',
+            'verify documents',
+            'view document-categories',
+            'create document-categories',
+            'edit document-categories',
+            'delete document-categories',
+            'view document-prefixes',
+            'create document-prefixes',
+            'edit document-prefixes',
+            'delete document-prefixes',
+            'view roles',
+            'create roles',
+            'edit roles',
+            'delete roles',
+            'view permissions',
+            'assign permissions',
+            'view dashboard',
+            'view statistics',
         ];
 
         /*
@@ -94,14 +124,24 @@ class PermissionRoleSeeder extends Seeder
 
             $manager->syncPermissions(
                 $orgPermissions->whereNotIn('name', [
-                    'create roles','edit roles','delete roles',
-                    'assign permissions','delete organizations'
+                    'create roles',
+                    'edit roles',
+                    'delete roles',
+                    'assign permissions',
+                    'delete organizations'
                 ])
             );
 
             $staff->syncPermissions(
-                $orgPermissions->filter(fn ($p) =>
+                $orgPermissions->filter(
+                    fn($p) =>
                     str_starts_with($p->name, 'view')
+                        && !in_array($p->name, [
+                            'view users',
+                            'view organizations',
+                            'view roles',
+                            'view permissions'
+                        ])
                 )
             );
         }
