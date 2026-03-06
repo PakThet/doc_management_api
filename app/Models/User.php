@@ -1,25 +1,27 @@
 <?php
+// app/Models/User.php
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Permission\Traits\HasRoles;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
+use App\Traits\HasOrganizationScope;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasRoles, HasApiTokens;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes, HasRoles, LogsActivity, HasOrganizationScope;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
+    protected $guard_name = 'api';
+
+
     protected $fillable = [
+        'organization_id',
         'first_name',
         'last_name',
         'image',
@@ -27,29 +29,77 @@ class User extends Authenticatable
         'bio',
         'status',
         'email',
+        'email_verified_at',
+        'two_factor_enabled',
+        'password_changed_at',
         'password',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password_changed_at' => 'datetime',
+        'two_factor_enabled' => 'boolean',
+    ];
+
+    
+    public function getActivitylogOptions(): LogOptions
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
+        return LogOptions::defaults()
+            ->logOnly(['first_name', 'last_name', 'email', 'status', 'phone'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
+
+    public function organization()
+    {
+        return $this->belongsTo(Organization::class);
+    }
+
+    public function employee()
+    {
+        return $this->hasOne(Employee::class);
+    }
+
+    public function createdDocuments()
+    {
+        return $this->hasMany(Document::class, 'created_by');
+    }
+
+    public function updatedDocuments()
+    {
+        return $this->hasMany(Document::class, 'updated_by');
+    }
+
+    public function getFullNameAttribute()
+    {
+        return "{$this->first_name} {$this->last_name}";
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->hasRole('Super Admin');
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active');
+    }
+
+    public function scopeByOrganization($query, $organizationId)
+    {
+        if (auth()->check() && auth()->user()->isSuperAdmin()) {
+            return $query;
+        }
+
+        if (is_null($organizationId)) {
+            return $query;
+        }
+
+        return $query->where('organization_id', $organizationId);
     }
 }

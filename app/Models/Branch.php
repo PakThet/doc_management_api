@@ -1,29 +1,65 @@
 <?php
+// app/Models/Branch.php
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
+use App\Traits\HasOrganizationScope;
 
 class Branch extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, LogsActivity, HasOrganizationScope;
+
     protected $fillable = [
+        'organization_id',
         'name',
         'address',
         'phone',
         'email',
+        'code',
+        'city',
+        'state',
+        'country',
+        'postal_code',
         'established_date',
+        'status',
+        'settings',
     ];
+
+    protected $casts = [
+        'established_date' => 'date',
+        'settings' => 'array',
+    ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'code', 'email', 'phone', 'status', 'city'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
+
+    public function organization()
+    {
+        return $this->belongsTo(Organization::class);
+    }
+
+    public function employees()
+    {
+        return $this->hasMany(Employee::class);
+    }
 
     public function documents()
     {
         return $this->hasMany(Document::class);
     }
 
-    public function organization()
+    public function scopeActive($query)
     {
-        return $this->belongsTo(Organization::class);
+        return $query->where('status', 'active');
     }
 }

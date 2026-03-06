@@ -17,12 +17,12 @@ class OrganizationFactory extends Factory
     public function definition(): array
     {
         return [
-        'name' => fake()->company(),
-        'type' => fake()->randomElement(['Private','Government','NGO']),
-        'logo' => null,
-        'address' => fake()->address(),
-        'phone' => fake()->phoneNumber(),
-        'email' => fake()->unique()->companyEmail(),
-    ];
+    'name' => $this->faker->company(),
+    'logo' => $this->faker->imageUrl(),
+    'address' => $this->faker->address(),
+    'phone' => $this->faker->phoneNumber(),
+    'email' => $this->faker->unique()->safeEmail(),
+    'slug' => $this->faker->slug(),
+];
     }
 }

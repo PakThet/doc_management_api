@@ -27,9 +27,10 @@ return new class extends Migration
             $table->id(); // permission id
             $table->string('name');
             $table->string('guard_name');
+             $table->unsignedBigInteger('organization_id')->nullable()->index();
             $table->timestamps();
 
-            $table->unique(['name', 'guard_name']);
+            $table->unique(['name', 'guard_name', 'organization_id']);
         });
 
         /**
@@ -42,12 +43,13 @@ return new class extends Migration
                 $table->index($columnNames['team_foreign_key'], 'roles_team_foreign_key_index');
             }
             $table->string('name');
+            $table->unsignedBigInteger('organization_id')->nullable()->index();
             $table->string('guard_name');
             $table->timestamps();
             if ($teams || config('permission.testing')) {
                 $table->unique([$columnNames['team_foreign_key'], 'name', 'guard_name']);
             } else {
-                $table->unique(['name', 'guard_name']);
+                $table->unique(['name', 'guard_name', 'organization_id']);
             }
         });
 
