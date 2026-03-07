@@ -1,6 +1,4 @@
 <?php
-// database/migrations/2024_01_01_000001_create_users_table.php
-
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -11,10 +9,10 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('organization_id')
-    ->nullable()
-    ->constrained()
-    ->cascadeOnDelete();
+            $table->foreignId('branch_id')
+                ->nullable()
+                ->constrained()
+                ->nullOnDelete();
             $table->string('first_name');
             $table->string('last_name');
             $table->string('image')->nullable();
@@ -31,8 +29,9 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
-            $table->index(['organization_id', 'status']);
             $table->index('email');
+            $table->index('status');
+            $table->index(['branch_id', 'status']);
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
@@ -53,8 +52,8 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('users');
-        Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
+        Schema::dropIfExists('password_reset_tokens');
+        Schema::dropIfExists('users');
     }
 };

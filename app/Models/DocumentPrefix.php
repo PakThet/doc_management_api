@@ -1,20 +1,23 @@
 <?php
-// app/Models/DocumentPrefix.php
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
-use App\Traits\HasOrganizationScope;
+
 class DocumentPrefix extends Model
 {
-    use HasFactory, SoftDeletes, LogsActivity, HasOrganizationScope;
+    use HasFactory, SoftDeletes, LogsActivity;
+
+    protected $table = 'document_prefixes';
 
     protected $fillable = [
-        'organization_id',
+        'department_id',
         'name',
         'prefix',
         'separator',
@@ -28,24 +31,28 @@ class DocumentPrefix extends Model
     protected $casts = [
         'is_default' => 'boolean',
         'metadata' => 'array',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
     ];
 
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'prefix', 'format', 'status', 'is_default'])
+            ->logOnly(['name', 'prefix', 'separator', 'format', 'status', 'is_default'])
             ->logOnlyDirty()
-            ->dontSubmitEmptyLogs();
+            ->dontSubmitEmptyLogs()
+            ->useLogName('document_prefix');
     }
 
-    public function organization()
+    public function department(): BelongsTo
     {
-        return $this->belongsTo(Organization::class);
+        return $this->belongsTo(Department::class);
     }
 
-    public function documents()
+    public function documents(): HasMany
     {
-        return $this->hasMany(Document::class);
+        return $this->hasMany(Document::class, 'document_prefix_id');
     }
 
     public function scopeActive($query)
@@ -53,21 +60,32 @@ class DocumentPrefix extends Model
         return $query->where('status', 'active');
     }
 
-    public function scopeByOrganization($query, $organizationId)
+    public function scopeInactive($query)
     {
-        if (auth()->check() && auth()->user()->isSuperAdmin()) {
-            return $query;
-        }
-
-        if (is_null($organizationId)) {
-            return $query;
-        }
-
-        return $query->where('organization_id', $organizationId);
+        return $query->where('status', 'inactive');
     }
 
     public function scopeDefault($query)
     {
         return $query->where('is_default', true);
+    }
+
+    public function scopeByDepartment($query, $departmentId)
+    {
+        return $query->where('department_id', $departmentId);
+    }
+
+    public function generateDocumentNumber($number): string
+    {
+        $replacements = [
+            '{PREFIX}' => $this->prefix,
+            '{SEPARATOR}' => $this->separator,
+            '{YEAR}' => date('Y'),
+            '{MONTH}' => date('m'),
+            '{DAY}' => date('d'),
+            '{NUMBER}' => str_pad($number, 5, '0', STR_PAD_LEFT),
+        ];
+
+        return str_replace(array_keys($replacements), array_values($replacements), $this->format);
     }
 }

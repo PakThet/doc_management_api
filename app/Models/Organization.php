@@ -1,16 +1,20 @@
 <?php
-// app/Models/Organization.php
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
+
 class Organization extends Model
 {
     use HasFactory, SoftDeletes, LogsActivity;
+
+    protected $table = 'organizations';
 
     protected $fillable = [
         'name',
@@ -26,53 +30,52 @@ class Organization extends Model
 
     protected $casts = [
         'settings' => 'array',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
     ];
 
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'email', 'status', 'phone'])
+            ->logOnly(['name', 'email', 'status', 'phone', 'website'])
             ->logOnlyDirty()
-            ->dontSubmitEmptyLogs();
+            ->dontSubmitEmptyLogs()
+            ->useLogName('organization');
     }
 
-    public function users()
-    {
-        return $this->hasMany(User::class);
-    }
-
-    public function branches()
+    public function branches(): HasMany
     {
         return $this->hasMany(Branch::class);
     }
 
-    public function departments()
+    public function employees(): HasManyThrough
     {
-        return $this->hasMany(Department::class);
+        return $this->hasManyThrough(Employee::class, Branch::class);
     }
 
-    public function employees()
+    public function users(): HasManyThrough
     {
-        return $this->hasMany(Employee::class);
+        return $this->hasManyThrough(User::class, Branch::class);
     }
 
-    public function documentCategories()
+    public function documents(): HasManyThrough
     {
-        return $this->hasMany(DocumentCategory::class);
-    }
-
-    public function documentPrefixes()
-    {
-        return $this->hasMany(DocumentPrefix::class);
-    }
-
-    public function documents()
-    {
-        return $this->hasMany(Document::class);
+        return $this->hasManyThrough(Document::class, Branch::class);
     }
 
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
+    }
+
+    public function scopeSuspended($query)
+    {
+        return $query->where('status', 'suspended');
+    }
+
+    public function scopeInactive($query)
+    {
+        return $query->where('status', 'inactive');
     }
 }

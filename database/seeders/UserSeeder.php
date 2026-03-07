@@ -2,89 +2,57 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\User;
-use App\Models\Organization;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        /*
-        |--------------------------------------------------------------------------
-        | 1️⃣ GLOBAL SUPER ADMIN (ONLY ONCE)
-        |--------------------------------------------------------------------------
-        */
+        $branch = \App\Models\Branch::first();
+        if (! $branch) {
+            return;
+        }
 
-        $superAdmin = User::firstOrCreate(
-            ['email' => 'superadmin@system.com'],
+        $super = User::updateOrCreate(
+            ['email' => 'superadmin@main.com'],
             [
-                'organization_id' => null, // 🔥 GLOBAL
-                'first_name' => 'Global',
-                'last_name' => 'Super Admin',
-                'phone' => '999999999',
-                'status' => 'active',
+                'branch_id' => $branch->id,
+                'first_name' => 'Super',
+                'last_name' => 'Admin',
                 'password' => Hash::make('password'),
+                'status' => 'active',
+                'phone' => '+85590000001',
             ]
         );
 
-        $superAdmin->syncRoles(['Super Admin']);
+        $super->syncRoles(['super_admin']);
 
-        /*
-        |--------------------------------------------------------------------------
-        | 2️⃣ ORGANIZATION USERS
-        |--------------------------------------------------------------------------
-        */
+        $admin = User::updateOrCreate(
+            ['email' => 'admin@main.com'],
+            [
+                'branch_id' => $branch->id,
+                'first_name' => 'Branch',
+                'last_name' => 'Admin',
+                'password' => Hash::make('password'),
+                'status' => 'active',
+                'phone' => '+85590000002',
+            ]
+        );
 
-        $organizations = Organization::all();
+        $admin->syncRoles(['admin']);
 
-        foreach ($organizations as $organization) {
-
-            // Admin
-            $admin = User::firstOrCreate(
-                ['email' => 'admin_'.$organization->id.'@example.com'],
-                [
-                    'organization_id' => $organization->id,
-                    'first_name' => 'Admin',
-                    'last_name' => 'User',
-                    'phone' => '100000000'.$organization->id,
-                    'status' => 'active',
-                    'password' => Hash::make('password'),
-                ]
-            );
-
-            $admin->syncRoles(['Admin']);
-
-            // Manager
-            $manager = User::firstOrCreate(
-                ['email' => 'manager_'.$organization->id.'@example.com'],
-                [
-                    'organization_id' => $organization->id,
-                    'first_name' => 'Manager',
-                    'last_name' => 'User',
-                    'phone' => '200000000'.$organization->id,
-                    'status' => 'active',
-                    'password' => Hash::make('password'),
-                ]
-            );
-
-            $manager->syncRoles(['Manager']);
-
-            // Staff
-            $staff = User::firstOrCreate(
-                ['email' => 'staff_'.$organization->id.'@example.com'],
-                [
-                    'organization_id' => $organization->id,
-                    'first_name' => 'Staff',
-                    'last_name' => 'User',
-                    'phone' => '300000000'.$organization->id,
-                    'status' => 'active',
-                    'password' => Hash::make('password'),
-                ]
-            );
-
-            $staff->syncRoles(['Staff']);
-        }
+        User::updateOrCreate(
+            ['email' => 'manager@main.com'],
+            [
+                'branch_id' => $branch->id,
+                'first_name' => 'Department',
+                'last_name' => 'Manager',
+                'password' => Hash::make('password'),
+                'status' => 'active',
+                'phone' => '+85590000003',
+            ]
+        )->syncRoles(['manager']);
     }
 }

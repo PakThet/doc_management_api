@@ -1,5 +1,4 @@
 <?php
-// app/Http/Resources/BranchResource.php
 
 namespace App\Http\Resources;
 
@@ -25,9 +24,9 @@ class BranchResource extends JsonResource
             'established_date' => $this->established_date,
             'status' => $this->status,
             'settings' => $this->settings,
+            'organization' => new OrganizationResource($this->whenLoaded('organization')),
             'employees_count' => $this->whenCounted('employees'),
             'documents_count' => $this->whenCounted('documents'),
-            // 'organization' => new OrganizationResource($this->whenLoaded('organization')),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'deleted_at' => $this->deleted_at,

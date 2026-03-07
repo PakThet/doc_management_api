@@ -1,6 +1,4 @@
 <?php
-// database/migrations/2024_01_01_000004_create_departments_table.php
-
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -11,11 +9,11 @@ return new class extends Migration
     {
         Schema::create('departments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('organization_id')
+            $table->foreignId('branch_id')
                 ->constrained()
                 ->cascadeOnDelete();
             $table->string('name');
-            $table->string('code')->nullable();
+            $table->string('code')->nullable()->unique();
             $table->text('description')->nullable();
             $table->foreignId('parent_id')
                 ->nullable()
@@ -30,9 +28,9 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
-            $table->unique(['organization_id', 'name', 'code']);
-            $table->index(['organization_id', 'status']);
+            $table->unique(['branch_id', 'name']);
             $table->index('parent_id');
+            $table->index('status');
         });
     }
 

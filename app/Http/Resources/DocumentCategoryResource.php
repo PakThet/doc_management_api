@@ -1,5 +1,4 @@
 <?php
-// app/Http/Resources/DocumentCategoryResource.php
 
 namespace App\Http\Resources;
 
@@ -12,12 +11,10 @@ class DocumentCategoryResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'organization_id' => $this->organization_id,
             'name' => $this->name,
             'slug' => $this->slug,
             'description' => $this->description,
             'status' => $this->status,
-            'is_system' => $this->is_system,
             'documents_count' => $this->whenCounted('documents'),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

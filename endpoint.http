@@ -1,7 +1,7 @@
 @baseUrl = http://localhost:8000/api
-@TokenSuperAdmin = 2|ueaa9odz0fYoBY3ilV8VIdflPYp1QR2BNJ6TB0ba6a960433
+@TokenSuperAdmin = 1|Txuf8DnpgxtKWDDhQ5ToKHxjuvdevOrE4U5zGXT687da3d51
 @TokenAdmin = 3|innXPjpPK8i2OLHV6DcvP2dOfaqaQql6ey5bS1Nb42ecbb01
-@tokenStaff = 4|OzJBVWESPbF82O0kfsuXfykzC08Pjs4t8N6dkCGs6a004a0f
+@tokenStaff = 2|aVp1AcSsZssNeGJNTGTLNjC2EnrAjbDxPNT3fHKp80f1d16f
 ### Public routes
 
 ### Register
@@ -16,16 +16,16 @@ Content-Type: application/json
 }
 
 ### Login Super Admin
-POST {{baseUrl}}/login
+POST {{baseUrl}}/auth/login
 Content-Type: application/json
 Accept: application/json
 
 {
-    "email": "superadmin@system.com",
+    "email": "superadmin@main.com",
     "password": "password"
 }
 ### Login Admin
-POST {{baseUrl}}/login
+POST {{baseUrl}}/auth/login
 Content-Type: application/json
 Accept: application/json
 
@@ -34,12 +34,12 @@ Accept: application/json
     "password": "password"
 }
 ### Login Staff User
-POST {{baseUrl}}/login
+POST {{baseUrl}}/auth/login
 Content-Type: application/json
 Accept: application/json
 
 {
-    "email": "staff_1@example.com",
+    "email": "manager@main.com",
     "password": "password"
 }
 
@@ -73,8 +73,9 @@ POST {{baseUrl}}/logout
 Authorization: Bearer {{authToken}}
 
 ### Me
-GET {{baseUrl}}/me
-Authorization: Bearer {{{{tokenStaff}}}}
+GET {{baseUrl}}/auth/me
+Accept: application/json
+Authorization: Bearer {{TokenSuperAdmin}}
 
 ### Users
 GET {{baseUrl}}/users
@@ -122,7 +123,7 @@ Content-Type: application/json
 
 ### Organizations
 GET {{baseUrl}}/organizations
-Authorization: Bearer {{authToken}}
+Authorization: Bearer {{TokenSuperAdmin}}
 
 POST {{baseUrl}}/organizations
 Authorization: Bearer {{authToken}}
@@ -153,7 +154,7 @@ Authorization: Bearer {{authToken}}
 ### Branches
 GET {{baseUrl}}/branches
 Accept: application/json
-Authorization: Bearer {{tokenStaff}}
+Authorization: Bearer {{TokenSuperAdmin}}
 
 ###
 POST {{baseUrl}}/branches

@@ -1,5 +1,4 @@
 <?php
-// app/Http/Controllers/Api/AuthController.php
 
 namespace App\Http\Controllers\Api;
 
@@ -15,101 +14,38 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends BaseController
 {
-    /**
-     * Register a new user
-     * 
-     * @param Request $request
-     * @return JsonResponse
-     */
-    public function register(Request $request): JsonResponse
+    public function login(Request $request): JsonResponse
     {
         $request->validate([
-            'first_name' => 'required|string|max:100',
-            'last_name' => 'required|string|max:100',
-            'email' => 'required|email|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-            'phone' => 'nullable|string|max:20',
-            'organization_name' => 'required|string|max:255',
+            'email' => 'required|email',
+            'password' => 'required',
         ]);
 
-        // Create organization
-        $organization = Organization::create([
-            'name' => $request->organization_name,
-            'slug' => Str::slug($request->organization_name) . '-' . uniqid(),
-            'email' => $request->email,
-            'status' => 'active',
-        ]);
+        $user = User::with(['branch', 'roles', 'permissions'])
+            ->where('email', $request->email)
+            ->first();
 
-        // Create user
-        $user = User::create([
-            'organization_id' => $organization->id,
-            'first_name' => $request->first_name,
-            'last_name' => $request->last_name,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'password' => Hash::make($request->password),
-            'status' => 'active',
-        ]);
+        if (! $user || ! Hash::check($request->password, $user->password)) {
+            throw ValidationException::withMessages([
+                'email' => ['The provided credentials are incorrect.'],
+            ]);
+        }
 
-        // Assign admin role
-        $user->assignRole('Admin');
+        if ($user->status !== 'active') {
+            return $this->sendError('Your account is not active.', [], 403);
+        }
 
-        // Create token
+        $user->tokens()->delete();
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return $this->sendResponse([
-            'token' => $token,
             'token_type' => 'Bearer',
-            'organization' => $organization,
-            'user' => $user,
-        ], 'Registration successful', 201);
+            'token' => $token,
+            'user' => $user
+        ], 'Login successful');
     }
 
-    /**
-     * Login user
-     * 
-     * @param Request $request
-     * @return JsonResponse
-     */
-    public function login(Request $request): JsonResponse
-{
-    $request->validate([
-        'email' => 'required|email',
-        'password' => 'required',
-    ]);
-
-    $user = User::with('organization')
-        ->where('email', $request->email)
-        ->first();
-
-    if (! $user || ! Hash::check($request->password, $user->password)) {
-        throw ValidationException::withMessages([
-            'email' => ['The provided credentials are incorrect.'],
-        ]);
-    }
-
-    if ($user->status !== 'active') {
-        return $this->sendError('Your account is not active.', [], 403);
-    }
-
-    // Optional: delete old tokens (recommended)
-    $user->tokens()->delete();
-
-    $token = $user->createToken('auth_token')->plainTextToken;
-
-    return $this->sendResponse([
-        'token_type' => 'Bearer',
-        'token' => $token,
-        'user' => $user,
-    ], 'Login successful');
-}
-
-    /**
-     * Logout user
-     * 
-     * @param Request $request
-     * @return JsonResponse
-     */
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
@@ -117,46 +53,35 @@ class AuthController extends BaseController
         return $this->sendResponse(null, 'Logged out successfully');
     }
 
-    /**
-     * Get authenticated user
-     * 
-     * @param Request $request
-     * @return JsonResponse
-     */
     public function me(Request $request)
     {
-        $user = $request->user()->load(['organization', 'roles', 'permissions', 'employee']);
+        $user = $request->user()->load([
+            'branch',
+            'roles',
+            'permissions'
+        ]);
 
         return $this->sendResponse($user, 'User retrieved successfully');
     }
 
-    /**
-     * Send password reset link
-     * 
-     * @param Request $request
-     * @return JsonResponse
-     */
     public function forgotPassword(Request $request)
     {
-        $request->validate(['email' => 'required|email']);
+        $request->validate([
+            'email' => 'required|email'
+        ]);
 
         $status = Password::sendResetLink(
             $request->only('email')
         );
 
         if ($status === Password::RESET_LINK_SENT) {
-            return $this->sendResponse(null, 'Password reset link sent to your email');
+            return $this->sendResponse(null, 'Password reset link sent');
         }
 
         return $this->sendError('Unable to send reset link', ['email' => __($status)], 400);
     }
 
-    /**
-     * Reset password
-     * 
-     * @param Request $request
-     * @return JsonResponse
-     */
+
     public function resetPassword(Request $request)
     {
         $request->validate([

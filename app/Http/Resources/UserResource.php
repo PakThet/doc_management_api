@@ -1,5 +1,4 @@
 <?php
-// app/Http/Resources/UserResource.php
 
 namespace App\Http\Resources;
 
@@ -12,7 +11,7 @@ class UserResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'organization_id' => $this->organization_id,
+            'branch_id' => $this->branch_id,
             'first_name' => $this->first_name,
             'last_name' => $this->last_name,
             'full_name' => $this->full_name,
@@ -29,8 +28,7 @@ class UserResource extends JsonResource
             'permissions' => $this->whenLoaded('permissions', function () {
                 return $this->getAllPermissions()->pluck('name');
             }),
-            'organization' => new OrganizationResource($this->whenLoaded('organization')),
-            'employee' => new EmployeeResource($this->whenLoaded('employee')),
+            'branch' => new BranchResource($this->whenLoaded('branch')),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'deleted_at' => $this->deleted_at,

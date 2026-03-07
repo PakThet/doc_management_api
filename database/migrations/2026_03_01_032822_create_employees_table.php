@@ -1,6 +1,4 @@
 <?php
-// database/migrations/2024_01_01_000005_create_employees_table.php
-
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -11,13 +9,6 @@ return new class extends Migration
     {
         Schema::create('employees', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('organization_id')
-                ->constrained()
-                ->cascadeOnDelete();
-            $table->foreignId('user_id')
-                ->nullable()
-                ->constrained()
-                ->nullOnDelete();
             $table->foreignId('branch_id')
                 ->constrained()
                 ->cascadeOnDelete();
@@ -51,13 +42,10 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
-            $table->index(['organization_id', 'status']);
             $table->index(['branch_id', 'status']);
             $table->index('join_date');
-            // $table->fullText(['first_name', 'last_name', 'email']);
+            $table->index('department_id');
         });
-
-        
     }
 
     public function down(): void

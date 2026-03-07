@@ -1,5 +1,4 @@
 <?php
-// app/Http/Resources/DocumentPrefixResource.php
 
 namespace App\Http\Resources;
 
@@ -12,7 +11,7 @@ class DocumentPrefixResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'organization_id' => $this->organization_id,
+            'department_id' => $this->department_id,
             'name' => $this->name,
             'prefix' => $this->prefix,
             'separator' => $this->separator,
@@ -21,6 +20,7 @@ class DocumentPrefixResource extends JsonResource
             'status' => $this->status,
             'is_default' => $this->is_default,
             'metadata' => $this->metadata,
+            'department' => new DepartmentResource($this->whenLoaded('department')),
             'documents_count' => $this->whenCounted('documents'),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

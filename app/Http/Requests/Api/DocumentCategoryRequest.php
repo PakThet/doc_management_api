@@ -1,11 +1,9 @@
 <?php
-// app/Http/Requests/Api/DocumentCategoryRequest.php
 
 namespace App\Http\Requests\Api;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Auth;
+
 class DocumentCategoryRequest extends FormRequest
 {
     public function authorize(): bool
@@ -15,20 +13,14 @@ class DocumentCategoryRequest extends FormRequest
 
     public function rules(): array
     {
-        $categoryId = $this->route('document_category')?->id;
-        $organizationId = Auth::user()->organization_id;
+        $documentCategory = $this->route('documentCategory') ?? $this->route('document_category');
+        $id = is_object($documentCategory) ? $documentCategory->id : $documentCategory;
 
         return [
             'name' => 'required|string|max:255',
-            'slug' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('document_categories')->ignore($categoryId)
-            ],
+            'slug' => 'required|string|max:255|unique:document_categories,slug,' . $id,
             'description' => 'nullable|string',
-            'status' => 'sometimes|in:active,inactive',
-            'is_system' => 'sometimes|boolean'
+            'status' => 'nullable|in:active,inactive',
         ];
     }
 }

@@ -1,98 +1,44 @@
 <?php
-// database/seeders/OrganizationSeeder.php
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Organization;
-use Illuminate\Support\Str;
+use Illuminate\Database\Seeder;
 
 class OrganizationSeeder extends Seeder
 {
     public function run(): void
     {
-        $organizations = [
+        Organization::updateOrCreate(
+            ['slug' => 'main-organization'],
             [
-                'name' => 'TechCorp International',
-                'slug' => 'techcorp-international',
-                'email' => 'info@techcorp.com',
-                'phone' => '+1-555-123-4567',
-                'address' => '123 Silicon Valley, San Francisco, CA 94105',
-                'website' => 'https://techcorp.com',
+                'name' => 'Main Organization',
+                'email' => 'info@main.com',
+                'phone' => '+85510000001',
+                'address' => 'Phnom Penh, Cambodia',
+                'website' => 'https://main.local',
                 'status' => 'active',
                 'settings' => [
-                    'timezone' => 'America/Los_Angeles',
-                    'date_format' => 'Y-m-d',
+                    'timezone' => 'Asia/Bangkok',
                     'currency' => 'USD',
-                    'language' => 'en',
                 ],
-            ],
+            ]
+        );
+
+        Organization::updateOrCreate(
+            ['slug' => 'support-organization'],
             [
-                'name' => 'Global Solutions Ltd',
-                'slug' => 'global-solutions',
-                'email' => 'contact@globalsolutions.com',
-                'phone' => '+44-20-1234-5678',
-                'address' => '456 Business Park, London, UK',
-                'website' => 'https://globalsolutions.com',
+                'name' => 'Support Organization',
+                'email' => 'support@main.com',
+                'phone' => '+85510000002',
+                'address' => 'Siem Reap, Cambodia',
+                'website' => 'https://support.local',
                 'status' => 'active',
                 'settings' => [
-                    'timezone' => 'Europe/London',
-                    'date_format' => 'd/m/Y',
-                    'currency' => 'GBP',
-                    'language' => 'en',
-                ],
-            ],
-            [
-                'name' => 'InnovateTech Asia',
-                'slug' => 'innovatetech-asia',
-                'email' => 'hello@innovatetech.asia',
-                'phone' => '+65-6789-0123',
-                'address' => '789 Tech Hub, Singapore',
-                'website' => 'https://innovatetech.asia',
-                'status' => 'active',
-                'settings' => [
-                    'timezone' => 'Asia/Singapore',
-                    'date_format' => 'Y-m-d',
-                    'currency' => 'SGD',
-                    'language' => 'en',
-                ],
-            ],
-            [
-                'name' => 'MediCare Health Systems',
-                'slug' => 'medicare-health',
-                'email' => 'info@medicarehealth.com',
-                'phone' => '+1-555-987-6543',
-                'address' => '321 Medical Center, Boston, MA 02115',
-                'website' => 'https://medicarehealth.com',
-                'status' => 'active',
-                'settings' => [
-                    'timezone' => 'America/New_York',
-                    'date_format' => 'Y-m-d',
+                    'timezone' => 'Asia/Bangkok',
                     'currency' => 'USD',
-                    'language' => 'en',
                 ],
-            ],
-            [
-                'name' => 'EduWorld Learning',
-                'slug' => 'eduworld-learning',
-                'email' => 'contact@eduworld.com',
-                'phone' => '+61-2-9876-5432',
-                'address' => '555 Education Street, Sydney, Australia',
-                'website' => 'https://eduworld.com',
-                'status' => 'inactive',
-                'settings' => [
-                    'timezone' => 'Australia/Sydney',
-                    'date_format' => 'd/m/Y',
-                    'currency' => 'AUD',
-                    'language' => 'en',
-                ],
-            ],
-        ];
-
-        foreach ($organizations as $org) {
-            Organization::create($org);
-        }
-
-        $this->command->info('Organizations created successfully!');
+            ]
+        );
     }
 }

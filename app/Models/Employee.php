@@ -1,21 +1,22 @@
 <?php
-// app/Models/Employee.php
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
-use App\Traits\HasOrganizationScope;
+
 class Employee extends Model
 {
-    use HasFactory, SoftDeletes, LogsActivity, HasOrganizationScope;
+    use HasFactory, SoftDeletes, LogsActivity;
+
+    protected $table = 'employees';
 
     protected $fillable = [
-        'organization_id',
-        'user_id',
         'branch_id',
         'department_id',
         'employee_code',
@@ -52,62 +53,53 @@ class Employee extends Model
         'bank_details' => 'array',
         'documents' => 'array',
         'metadata' => 'array',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
     ];
 
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['first_name', 'last_name', 'email', 'phone', 'status', 'position', 'department_id'])
+            ->logOnly(['employee_code', 'first_name', 'last_name', 'email', 'phone', 'status', 'position', 'salary'])
             ->logOnlyDirty()
-            ->dontSubmitEmptyLogs();
+            ->dontSubmitEmptyLogs()
+            ->useLogName('employee');
     }
 
-    public function organization()
-    {
-        return $this->belongsTo(Organization::class);
-    }
-
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
-
-    public function branch()
+    public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
     }
 
-    public function department()
+    public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);
     }
 
-    public function headedDepartment()
+    public function headedDepartments(): HasMany
     {
-        return $this->hasOne(Department::class, 'head_of_department_id');
+        return $this->hasMany(Department::class, 'head_of_department_id');
     }
 
-    public function getFullNameAttribute()
+    public function getFullNameAttribute(): string
     {
         return "{$this->first_name} {$this->last_name}";
+    }
+
+    public function getAgeAttribute(): ?int
+    {
+        return $this->date_of_birth?->age;
+    }
+
+    public function getYearsOfServiceAttribute(): ?int
+    {
+        return $this->join_date?->diffInYears(now());
     }
 
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
-    }
-
-    public function scopeByOrganization($query, $organizationId)
-    {
-        if (auth()->check() && auth()->user()->isSuperAdmin()) {
-            return $query;
-        }
-
-        if (is_null($organizationId)) {
-            return $query;
-        }
-
-        return $query->where('organization_id', $organizationId);
     }
 
     public function scopeByBranch($query, $branchId)
@@ -118,5 +110,25 @@ class Employee extends Model
     public function scopeByDepartment($query, $departmentId)
     {
         return $query->where('department_id', $departmentId);
+    }
+
+    public function scopeByEmploymentType($query, $type)
+    {
+        return $query->where('employment_type', $type);
+    }
+
+    public function scopeOnLeave($query)
+    {
+        return $query->where('status', 'on_leave');
+    }
+
+    public function scopeTerminated($query)
+    {
+        return $query->where('status', 'terminated');
+    }
+
+    public function scopeJoinDateBetween($query, $startDate, $endDate)
+    {
+        return $query->whereBetween('join_date', [$startDate, $endDate]);
     }
 }

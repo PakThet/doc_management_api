@@ -1,6 +1,4 @@
 <?php
-// database/migrations/2024_01_01_000008_create_documents_table.php
-
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -11,9 +9,6 @@ return new class extends Migration
     {
         Schema::create('documents', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('organization_id')
-                ->constrained()
-                ->cascadeOnDelete();
             $table->foreignId('branch_id')
                 ->constrained()
                 ->cascadeOnDelete();
@@ -52,9 +47,10 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
-            $table->index(['organization_id', 'status']);
-            $table->index(['branch_id', 'status']);
             $table->index('expiration_date');
+            $table->index('status');
+            $table->index(['branch_id', 'status']);
+            $table->index('created_by');
         });
     }
 

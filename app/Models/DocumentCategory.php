@@ -1,29 +1,31 @@
 <?php
-// app/Models/DocumentCategory.php
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
-use App\Traits\HasOrganizationScope;
+
 class DocumentCategory extends Model
 {
-    use HasFactory, SoftDeletes, LogsActivity, HasOrganizationScope;
+    use HasFactory, SoftDeletes, LogsActivity;
+
+    protected $table = 'document_categories';
 
     protected $fillable = [
-        'organization_id',
         'name',
         'slug',
         'description',
         'status',
-        'is_system',
     ];
 
     protected $casts = [
-        'is_system' => 'boolean',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
     ];
 
     public function getActivitylogOptions(): LogOptions
@@ -31,17 +33,13 @@ class DocumentCategory extends Model
         return LogOptions::defaults()
             ->logOnly(['name', 'slug', 'status'])
             ->logOnlyDirty()
-            ->dontSubmitEmptyLogs();
+            ->dontSubmitEmptyLogs()
+            ->useLogName('document_category');
     }
 
-    public function organization()
+    public function documents(): HasMany
     {
-        return $this->belongsTo(Organization::class);
-    }
-
-    public function documents()
-    {
-        return $this->hasMany(Document::class);
+        return $this->hasMany(Document::class, 'document_category_id');
     }
 
     public function scopeActive($query)
@@ -49,21 +47,8 @@ class DocumentCategory extends Model
         return $query->where('status', 'active');
     }
 
-    public function scopeByOrganization($query, $organizationId)
+    public function scopeInactive($query)
     {
-        if (auth()->check() && auth()->user()->isSuperAdmin()) {
-            return $query;
-        }
-
-        if (is_null($organizationId)) {
-            return $query;
-        }
-
-        return $query->where('organization_id', $organizationId);
-    }
-
-    public function scopeSystem($query)
-    {
-        return $query->where('is_system', true);
+        return $query->where('status', 'inactive');
     }
 }

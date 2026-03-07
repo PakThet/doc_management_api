@@ -1,5 +1,4 @@
 <?php
-// app/Http/Resources/DepartmentResource.php
 
 namespace App\Http\Resources;
 
@@ -12,7 +11,7 @@ class DepartmentResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'organization_id' => $this->organization_id,
+            'branch_id' => $this->branch_id,
             'name' => $this->name,
             'code' => $this->code,
             'description' => $this->description,
@@ -24,6 +23,7 @@ class DepartmentResource extends JsonResource
             'budget' => $this->budget,
             'status' => $this->status,
             'metadata' => $this->metadata,
+            'branch' => new BranchResource($this->whenLoaded('branch')),
             'parent' => new DepartmentResource($this->whenLoaded('parent')),
             'children' => DepartmentResource::collection($this->whenLoaded('children')),
             'head_of_department' => new EmployeeResource($this->whenLoaded('headOfDepartment')),

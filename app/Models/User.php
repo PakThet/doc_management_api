@@ -1,5 +1,4 @@
 <?php
-// app/Models/User.php
 
 namespace App\Models;
 
@@ -8,20 +7,22 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Permission\Traits\HasRoles;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
-use App\Traits\HasOrganizationScope;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable, SoftDeletes, HasRoles, LogsActivity, HasOrganizationScope;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes, HasRoles, LogsActivity;
 
     protected $guard_name = 'api';
 
+    protected $table = 'users';
 
     protected $fillable = [
-        'organization_id',
+        'branch_id',
         'first_name',
         'last_name',
         'image',
@@ -44,45 +45,44 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password_changed_at' => 'datetime',
         'two_factor_enabled' => 'boolean',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
     ];
 
-    
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['first_name', 'last_name', 'email', 'status', 'phone'])
+            ->logOnly(['first_name', 'last_name', 'email', 'phone', 'status'])
             ->logOnlyDirty()
-            ->dontSubmitEmptyLogs();
+            ->dontSubmitEmptyLogs()
+            ->useLogName('user');
     }
 
-    public function organization()
+    public function branch(): BelongsTo
     {
-        return $this->belongsTo(Organization::class);
+        return $this->belongsTo(Branch::class);
     }
 
-    public function employee()
-    {
-        return $this->hasOne(Employee::class);
-    }
-
-    public function createdDocuments()
+    public function createdDocuments(): HasMany
     {
         return $this->hasMany(Document::class, 'created_by');
     }
 
-    public function updatedDocuments()
+    public function updatedDocuments(): HasMany
     {
         return $this->hasMany(Document::class, 'updated_by');
     }
 
-    public function getFullNameAttribute()
+
+    public function getFullNameAttribute(): string
     {
         return "{$this->first_name} {$this->last_name}";
     }
 
-    public function isSuperAdmin(): bool
+    public function getInitialsAttribute(): string
     {
-        return $this->hasRole('Super Admin');
+        return strtoupper(substr($this->first_name, 0, 1) . substr($this->last_name, 0, 1));
     }
 
     public function scopeActive($query)
@@ -90,16 +90,23 @@ class User extends Authenticatable
         return $query->where('status', 'active');
     }
 
-    public function scopeByOrganization($query, $organizationId)
+    public function scopeInactive($query)
     {
-        if (auth()->check() && auth()->user()->isSuperAdmin()) {
-            return $query;
-        }
+        return $query->where('status', 'inactive');
+    }
 
-        if (is_null($organizationId)) {
-            return $query;
-        }
+    public function scopeSuspended($query)
+    {
+        return $query->where('status', 'suspended');
+    }
 
-        return $query->where('organization_id', $organizationId);
+    public function scopeByBranch($query, $branchId)
+    {
+        return $query->where('branch_id', $branchId);
+    }
+
+    public function scopeVerified($query)
+    {
+        return $query->whereNotNull('email_verified_at');
     }
 }

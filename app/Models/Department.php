@@ -1,20 +1,23 @@
 <?php
-// app/Models/Department.php
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
-use App\Traits\HasOrganizationScope;
+
 class Department extends Model
 {
-    use HasFactory, SoftDeletes, LogsActivity, HasOrganizationScope;
+    use HasFactory, SoftDeletes, LogsActivity;
+
+    protected $table = 'departments';
 
     protected $fillable = [
-        'organization_id',
+        'branch_id',
         'name',
         'code',
         'description',
@@ -31,39 +34,48 @@ class Department extends Model
     protected $casts = [
         'budget' => 'decimal:2',
         'metadata' => 'array',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
     ];
 
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'code', 'status', 'budget', 'head_of_department_id'])
+            ->logOnly(['name', 'code', 'email', 'phone', 'status', 'budget'])
             ->logOnlyDirty()
-            ->dontSubmitEmptyLogs();
+            ->dontSubmitEmptyLogs()
+            ->useLogName('department');
     }
 
-    public function organization()
+    public function branch(): BelongsTo
     {
-        return $this->belongsTo(Organization::class);
+        return $this->belongsTo(Branch::class);
     }
 
-    public function parent()
+    public function parent(): BelongsTo
     {
         return $this->belongsTo(Department::class, 'parent_id');
     }
 
-    public function children()
+    public function children(): HasMany
     {
         return $this->hasMany(Department::class, 'parent_id');
     }
 
-    public function headOfDepartment()
+    public function headOfDepartment(): BelongsTo
     {
         return $this->belongsTo(Employee::class, 'head_of_department_id');
     }
 
-    public function employees()
+    public function employees(): HasMany
     {
         return $this->hasMany(Employee::class);
+    }
+
+    public function documentPrefixes(): HasMany
+    {
+        return $this->hasMany(DocumentPrefix::class);
     }
 
     public function scopeActive($query)
@@ -71,21 +83,23 @@ class Department extends Model
         return $query->where('status', 'active');
     }
 
-    public function scopeByOrganization($query, $organizationId)
+    public function scopeInactive($query)
     {
-        if (auth()->check() && auth()->user()->isSuperAdmin()) {
-            return $query;
-        }
+        return $query->where('status', 'inactive');
+    }
 
-        if (is_null($organizationId)) {
-            return $query;
-        }
-
-        return $query->where('organization_id', $organizationId);
+    public function scopeByBranch($query, $branchId)
+    {
+        return $query->where('branch_id', $branchId);
     }
 
     public function scopeRoot($query)
     {
         return $query->whereNull('parent_id');
+    }
+
+    public function scopeWithHead($query)
+    {
+        return $query->whereNotNull('head_of_department_id');
     }
 }

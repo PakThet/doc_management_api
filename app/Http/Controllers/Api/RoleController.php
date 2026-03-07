@@ -2,127 +2,70 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Models\Role;
+use App\Http\Requests\Api\RoleRequest;
 use App\Models\Permission;
+use App\Models\Role;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
+use Spatie\QueryBuilder\AllowedFilter;
+use Spatie\QueryBuilder\QueryBuilder;
 
 class RoleController extends BaseController
 {
-    /*
-    |--------------------------------------------------------------------------
-    | List Roles
-    |--------------------------------------------------------------------------
-    */
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
-        $roles = Role::where('organization_id', Auth::user()->organization_id)
-            ->with('permissions')
-            ->orderBy('name')
-            ->paginate($request->per_page ?? 15);
+        $roles = QueryBuilder::for(Role::class)
+            ->with(['permissions', 'branch'])
+            ->allowedFilters([
+                AllowedFilter::partial('name'),
+                AllowedFilter::exact('guard_name'),
+                AllowedFilter::exact('branch_id'),
+            ])
+            ->allowedSorts(['id', 'name', 'guard_name', 'created_at'])
+            ->defaultSort('name')
+            ->paginate((int) $request->integer('per_page', 15));
 
-        return $this->sendPaginated($roles, 'Roles retrieved successfully');
+        return $this->sendPaginated($roles, $roles->items(), 'Roles retrieved successfully');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Create Role
-    |--------------------------------------------------------------------------
-    */
-    public function store(Request $request): JsonResponse
+    public function store(RoleRequest $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'permissions' => 'sometimes|array',
-            'permissions.*' => 'string',
-        ]);
+        $role = Role::create($request->validated());
 
-        $role = Role::create([
-            'name' => $request->name,
-            'guard_name' => 'api',
-            'organization_id' => Auth::user()->organization_id,
-        ]);
-
-        if ($request->filled('permissions')) {
-
-            $permissions = Permission::whereIn('name', $request->permissions)
-                ->where('organization_id', Auth::user()->organization_id)
-                ->get();
-
-            $role->syncPermissions($permissions);
-        }
-
-        return $this->sendResponse($role->load('permissions'), 'Role created successfully', 201);
+        return $this->sendResponse($role->load(['permissions', 'branch']), 'Role created successfully', 201);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Update Role
-    |--------------------------------------------------------------------------
-    */
-    public function update(Request $request, $id): JsonResponse
+    public function show(Role $role)
     {
-        $role = Role::where('organization_id', Auth::user()->organization_id)
-            ->findOrFail($id);
-
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'permissions' => 'sometimes|array',
-            'permissions.*' => 'string',
-        ]);
-
-        $role->update([
-            'name' => $request->name,
-        ]);
-
-        if ($request->filled('permissions')) {
-
-            $permissions = Permission::whereIn('name', $request->permissions)
-                ->where('organization_id', Auth::user()->organization_id)
-                ->get();
-
-            $role->syncPermissions($permissions);
-        }
-
-        return $this->sendResponse($role->load('permissions'), 'Role updated successfully');
+        return $this->sendResponse($role->load(['permissions', 'branch']), 'Role retrieved successfully');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Delete Role
-    |--------------------------------------------------------------------------
-    */
-    public function destroy($id): JsonResponse
+    public function update(RoleRequest $request, Role $role)
     {
-        $role = Role::where('organization_id', Auth::user()->organization_id)
-            ->findOrFail($id);
+        $role->update($request->validated());
 
+        return $this->sendResponse($role->load(['permissions', 'branch']), 'Role updated successfully');
+    }
+
+    public function destroy(Role $role)
+    {
         $role->delete();
 
         return $this->sendResponse(null, 'Role deleted successfully');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Assign Permissions
-    |--------------------------------------------------------------------------
-    */
-    public function assignPermissions(Request $request, $id): JsonResponse
+    public function assignPermissions(Request $request, Role $role)
     {
-        $role = Role::where('organization_id', Auth::user()->organization_id)
-            ->findOrFail($id);
-
-        $request->validate([
-            'permissions' => 'required|array',
-            'permissions.*' => 'string',
+        $validated = $request->validate([
+            'permissions' => ['required', 'array'],
+            'permissions.*' => ['required', Rule::exists('permissions', 'name')],
         ]);
 
-        $permissions = Permission::whereIn('name', $request->permissions)
-            ->where('organization_id', Auth::user()->organization_id)
-            ->get();
+        $permissionNames = Permission::query()
+            ->whereIn('name', $validated['permissions'])
+            ->pluck('name');
 
-        $role->syncPermissions($permissions);
+        $role->syncPermissions($permissionNames);
 
         return $this->sendResponse($role->load('permissions'), 'Permissions assigned successfully');
     }

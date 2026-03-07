@@ -1,6 +1,4 @@
 <?php
-// database/migrations/2024_01_01_000003_create_branches_table.php
-
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -29,8 +27,8 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
-            $table->index(['organization_id', 'status']);
             $table->index('city');
+            $table->index('status');
         });
     }
 

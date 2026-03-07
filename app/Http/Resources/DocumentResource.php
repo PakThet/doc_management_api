@@ -1,5 +1,4 @@
 <?php
-// app/Http/Resources/DocumentResource.php
 
 namespace App\Http\Resources;
 
@@ -12,7 +11,6 @@ class DocumentResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'organization_id' => $this->organization_id,
             'branch_id' => $this->branch_id,
             'document_category_id' => $this->document_category_id,
             'document_prefix_id' => $this->document_prefix_id,
@@ -29,15 +27,17 @@ class DocumentResource extends JsonResource
             'file_type' => $this->file_type,
             'file_size' => $this->file_size,
             'mime_type' => $this->mime_type,
-            'file_url' => $this->file_path ? asset('storage/' . $this->file_path) : null,
+            'file_path' => $this->file_path,
+            'file_url' => $this->file_url,
             'qr_token' => $this->qr_token,
-            'qr_code_url' => $this->qr_code_path ? asset('storage/' . $this->qr_code_path) : null,
+            'qr_code_path' => $this->qr_code_path,
+            'qr_code_url' => $this->qr_code_url,
             'branch' => new BranchResource($this->whenLoaded('branch')),
             'category' => new DocumentCategoryResource($this->whenLoaded('category')),
             'prefix' => new DocumentPrefixResource($this->whenLoaded('prefix')),
-            'creator' => new UserResource($this->whenLoaded('creator')),
-            'updater' => new UserResource($this->whenLoaded('updater')),
-            'is_expired' => $this->expiration_date ? $this->expiration_date->isPast() : false,
+            'created_by_user' => new UserResource($this->whenLoaded('createdBy')),
+            'updated_by_user' => new UserResource($this->whenLoaded('updatedBy')),
+            'is_expired' => $this->is_expired,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'deleted_at' => $this->deleted_at,

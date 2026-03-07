@@ -1,5 +1,4 @@
 <?php
-// app/Http/Resources/EmployeeResource.php
 
 namespace App\Http\Resources;
 
@@ -12,8 +11,6 @@ class EmployeeResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'organization_id' => $this->organization_id,
-            'user_id' => $this->user_id,
             'branch_id' => $this->branch_id,
             'department_id' => $this->department_id,
             'employee_code' => $this->employee_code,
@@ -38,10 +35,9 @@ class EmployeeResource extends JsonResource
             'bank_details' => $this->bank_details,
             'documents' => $this->documents,
             'metadata' => $this->metadata,
-            'user' => new UserResource($this->whenLoaded('user')),
             'branch' => new BranchResource($this->whenLoaded('branch')),
             'department' => new DepartmentResource($this->whenLoaded('department')),
-            'headed_department' => new DepartmentResource($this->whenLoaded('headedDepartment')),
+            'headed_departments' => DepartmentResource::collection($this->whenLoaded('headedDepartments')),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'deleted_at' => $this->deleted_at,
