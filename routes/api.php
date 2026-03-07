@@ -8,7 +8,7 @@ use App\Http\Controllers\Api\BranchController;
 use App\Http\Controllers\Api\DepartmentController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\DocumentCategoryController;
-use App\Http/Controllers\Api\DocumentPrefixController;
+use App\Http\Controllers\Api\DocumentPrefixController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\PermissionController;
@@ -32,7 +32,7 @@ Route::get('/documents/verify/{token}', [DocumentController::class, 'verify']);
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth:api', 'organization.context'])->group(function () {
+Route::middleware(['auth:api'])->group(function () {
 
     /*
     |--------------------------------------------------------------------------

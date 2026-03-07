@@ -11,20 +11,10 @@ return new class extends Migration
     {
         Schema::create('employees', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('organization_id')
-                ->constrained()
-                ->cascadeOnDelete();
-            $table->foreignId('user_id')
-                ->nullable()
-                ->constrained()
-                ->nullOnDelete();
-            $table->foreignId('branch_id')
-                ->constrained()
-                ->cascadeOnDelete();
-            $table->foreignId('department_id')
-                ->nullable()
-                ->constrained()
-                ->nullOnDelete();
+            $table->unsignedBigInteger('organization_id');
+            $table->unsignedBigInteger('user_id')->nullable();
+            $table->unsignedBigInteger('branch_id');
+            $table->unsignedBigInteger('department_id')->nullable();
             $table->string('employee_code')->unique();
             $table->string('first_name');
             $table->string('last_name');

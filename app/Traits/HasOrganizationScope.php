@@ -15,19 +15,16 @@ trait HasOrganizationScope
 
             $user = Auth::user();
 
-            if (!$user) {
-                return;
-            }
-            /** @var User|null $user */
-            // Super Admin sees everything
-            if ($user->hasRole('Super Admin')) {
+            if ($user && $user->hasRole('Super Admin')) {
                 return;
             }
 
-            $builder->where(
-                $builder->getModel()->getTable() . '.organization_id',
-                $user->organization_id
-            );
+            if ($user) {
+                $builder->where(
+                    $builder->getModel()->getTable() . '.organization_id',
+                    $user->organization_id
+                );
+            }
         });
 
         // Auto set organization_id when creating
@@ -35,7 +32,7 @@ trait HasOrganizationScope
             /** @var User|null $user */
             $user = Auth::user();
 
-            if ($user && !$user->hasRole('Super Admin')) {
+            if ($user && !$user->hasRole('Super Admin') && is_null($model->organization_id)) {
                 $model->organization_id = $user->organization_id;
             }
         });

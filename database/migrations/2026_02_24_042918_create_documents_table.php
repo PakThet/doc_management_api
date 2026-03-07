@@ -11,28 +11,12 @@ return new class extends Migration
     {
         Schema::create('documents', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('organization_id')
-                ->constrained()
-                ->cascadeOnDelete();
-            $table->foreignId('branch_id')
-                ->constrained()
-                ->cascadeOnDelete();
-            $table->foreignId('document_category_id')
-                ->nullable()
-                ->constrained()
-                ->nullOnDelete();
-            $table->foreignId('document_prefix_id')
-                ->nullable()
-                ->constrained()
-                ->nullOnDelete();
-            $table->foreignId('created_by')
-                ->nullable()
-                ->constrained('users')
-                ->nullOnDelete();
-            $table->foreignId('updated_by')
-                ->nullable()
-                ->constrained('users')
-                ->nullOnDelete();
+            $table->unsignedBigInteger('organization_id');
+            $table->unsignedBigInteger('branch_id');
+            $table->unsignedBigInteger('document_category_id')->nullable();
+            $table->unsignedBigInteger('document_prefix_id')->nullable();
+            $table->unsignedBigInteger('created_by')->nullable();
+            $table->unsignedBigInteger('updated_by')->nullable();
             $table->string('document_code')->unique();
             $table->string('verification_token')->unique();
             $table->string('title');

@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
+use Illuminate\Support\Facades\Log;
+
 class DocumentController extends BaseController
 {
     /**
@@ -20,42 +22,49 @@ class DocumentController extends BaseController
      */
     public function index(Request $request)
     {
-        $documents = Document::with(['organization', 'branch', 'category', 'prefix', 'creator'])
-            ->byOrganization($this->getOrganizationId())
-            ->when($request->search, function ($query, $search) {
-                $query->where('title', 'like', "%{$search}%")
-                    ->orWhere('document_code', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%");
-            })
-            ->when($request->status, function ($query, $status) {
-                $query->where('status', $status);
-            })
-            ->when($request->branch_id, function ($query, $branchId) {
-                $query->where('branch_id', $branchId);
-            })
-            ->when($request->category_id, function ($query, $categoryId) {
-                $query->where('document_category_id', $categoryId);
-            })
-            ->when($request->visibility, function ($query, $visibility) {
-                $query->where('visibility', $visibility);
-            })
-            ->when($request->expired, function ($query) {
-                $query->expired();
-            })
-            ->when($request->expiring_soon, function ($query) use ($request) {
-                $days = $request->expiring_soon_days ?? 30;
-                $query->expiringSoon($days);
-            })
-            ->when($request->date_from, function ($query, $date) {
-                $query->whereDate('created_at', '>=', $date);
-            })
-            ->when($request->date_to, function ($query, $date) {
-                $query->whereDate('created_at', '<=', $date);
-            })
-            ->orderBy($request->sort_by ?? 'created_at', $request->sort_direction ?? 'desc')
-            ->paginate($request->per_page ?? 15);
+        try {
+            Log::info('Fetching documents for organization ID: ' . $this->getOrganizationId());
 
-        return $this->sendPaginated(DocumentResource::collection($documents), 'Documents retrieved successfully');
+            $documents = Document::with(['organization', 'branch', 'category', 'prefix', 'creator'])
+                ->byOrganization($this->getOrganizationId())
+                ->when($request->search, function ($query, $search) {
+                    $query->where('title', 'like', "%{$search}%")
+                        ->orWhere('document_code', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%");
+                })
+                ->when($request->status, function ($query, $status) {
+                    $query->where('status', $status);
+                })
+                ->when($request->branch_id, function ($query, $branchId) {
+                    $query->where('branch_id', $branchId);
+                })
+                ->when($request->category_id, function ($query, $categoryId) {
+                    $query->where('document_category_id', $categoryId);
+                })
+                ->when($request->visibility, function ($query, $visibility) {
+                    $query->where('visibility', $visibility);
+                })
+                ->when($request->expired, function ($query) {
+                    $query->expired();
+                })
+                ->when($request->expiring_soon, function ($query) use ($request) {
+                    $days = $request->expiring_soon_days ?? 30;
+                    $query->expiringSoon($days);
+                })
+                ->when($request->date_from, function ($query, $date) {
+                    $query->whereDate('created_at', '>=', $date);
+                })
+                ->when($request->date_to, function ($query, $date) {
+                    $query->whereDate('created_at', '<=', $date);
+                })
+                ->orderBy($request->sort_by ?? 'created_at', $request->sort_direction ?? 'desc')
+                ->paginate($request->per_page ?? 15);
+
+            return $this->sendPaginated(DocumentResource::collection($documents), 'Documents retrieved successfully');
+        } catch (\Exception $e) {
+            Log::error('Error fetching documents: ' . $e->getMessage());
+            return $this->sendError('An error occurred while fetching documents.', [], 500);
+        }
     }
 
     /**

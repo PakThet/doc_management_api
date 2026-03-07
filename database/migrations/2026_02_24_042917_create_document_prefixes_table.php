@@ -11,9 +11,7 @@ return new class extends Migration
     {
         Schema::create('document_prefixes', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('organization_id')
-                  ->constrained()
-                  ->cascadeOnDelete();
+            $table->unsignedBigInteger('organization_id');
             $table->string('name');
             $table->string('prefix', 20)->unique();
             $table->string('separator', 5)->default('-');
