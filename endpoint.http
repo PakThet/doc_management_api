@@ -1,6 +1,6 @@
 @baseUrl = http://localhost:8000/api
-@TokenSuperAdmin = 2|woy5SPsyS8xcP2dn486KLoltBGbjZkSTPFMXhdTP27cc5ff0
-@TokenAdmin = 4|ORMkge6WX7zA0CimPhYfR0HN2m8SVJyTARlCnUUV842daffc
+@TokenSuperAdmin = 3|WsQtzzgLazc3OPQZHnZ8Odl4bQLCLe9VbS3QaGrr0b18a286
+@TokenAdmin = 4|TsyNttYyU4nREq6v2NkpO0giF2uRAEMZHfp5GKYk765f207c
 @tokenStaff = 1|UKZVEWw1MQ5KqF3rtNj1rYqf3K25CPjVhdrYCpKr06531532
 @tokenDocVerify = f92967a6-8fb8-4801-8a7b-7958bba4f53b
 ### Public routes
@@ -128,12 +128,12 @@ Accept: application/json
 
 ### Users
 GET {{baseUrl}}/users
-Authorization: Bearer {{TokenSuperAdmin}}
+Authorization: Bearer {{TokenAdmin}}
 Accept: application/json
 
 ### User Specific
-GET {{baseUrl}}/users/23
-Authorization: Bearer {{TokenSuperAdmin}}
+GET {{baseUrl}}/users/8
+Authorization: Bearer {{TokenAdmin}}
 Accept: application/json
 
 ### Create User
@@ -369,7 +369,8 @@ Accept: application/json
 
 #################################
 GET {{baseUrl}}/employees
-Authorization: Bearer {{tokenStaff}}
+Authorization: Bearer {{TokenAdmin}}
+Accept: application/json
 
 ###
 POST {{baseUrl}}/employees
@@ -405,9 +406,9 @@ Accept: application/json
 }
 
 ###
-GET {{baseUrl}}/employees/66
+GET {{baseUrl}}/employees/14
 Accept: application/json
-Authorization: Bearer {{TokenAdmin}}
+Authorization: Bearer {{TokenSuperAdmin}}
 
 ###
 PUT {{baseUrl}}/employees/66
@@ -435,7 +436,8 @@ Accept: application/json
 
 #################################
 GET {{baseUrl}}/document-categories
-Authorization: Bearer {{tokenStaff}}
+Accept: application/json
+Authorization: Bearer {{TokenAdmin}}
 
 ###
 POST {{baseUrl}}/document-categories
@@ -454,7 +456,7 @@ Authorization: Bearer {{TokenAdmin}}
 Accept: application/json
 
 ###
-PUT {{baseUrl}}/document-categories/11
+PUT {{baseUrl}}/document-categories/5
 Authorization: Bearer {{TokenAdmin}}
 Accept: application/json
 Content-Type: application/json
@@ -479,7 +481,7 @@ Accept: application/json
 
 #################################
 GET {{baseUrl}}/document-prefixes
-Authorization: Bearer {{tokenStaff}}
+Authorization: Bearer {{TokenAdmin}}
 
 ###
 POST {{baseUrl}}/document-prefixes
@@ -523,7 +525,8 @@ Accept: application/json
 
 #################################
 GET {{baseUrl}}/documents
-Authorization: Bearer {{tokenStaff}}
+Authorization: Bearer {{TokenAdmin}}
+Accept: application/json
 
 ###
 POST {{baseUrl}}/documents
@@ -533,7 +536,7 @@ Content-Type: multipart/form-data
 
 ###
 
-GET {{baseUrl}}/documents/53
+GET {{baseUrl}}/documents/19
 Authorization: Bearer {{TokenSuperAdmin}}
 Accept: application/json
 

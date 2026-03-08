@@ -31,7 +31,6 @@ class UserController extends Controller
         $query = QueryBuilder::for(User::class)
             ->allowedFilters([
                 AllowedFilter::exact('status'),
-                AllowedFilter::exact('branch_id'),
                 AllowedFilter::partial('first_name'),
                 AllowedFilter::partial('last_name'),
                 AllowedFilter::partial('email'),
@@ -39,11 +38,9 @@ class UserController extends Controller
             ])
             ->allowedSorts(['first_name', 'last_name', 'email', 'created_at', 'status'])
             ->allowedIncludes(['branch', 'roles', 'permissions']);
-
-        if (! $authUser->hasRole('super-admin') && $authUser->branch_id) {
-            $query->forBranch($authUser->branch_id);
-        }
-
+            if (! $authUser->hasRole('super-admin')) {
+        $query->where('branch_id', $authUser->branch_id);
+    }
         $users = $query->paginate(request()->integer('per_page', 15))
             ->appends(request()->query());
 
@@ -87,7 +84,7 @@ class UserController extends Controller
 
     public function show(User $user): JsonResponse
     {
-        $this->authorizeBranchAccess($user);
+        $this->authorize('view', $user);
 
         $user->load(['branch', 'roles']);
 
@@ -100,7 +97,7 @@ class UserController extends Controller
 
     public function update(Request $request, User $user): JsonResponse
     {
-        $this->authorizeBranchAccess($user);
+        $this->authorize('update', $user);
 
         $validated = $request->validate([
             'first_name'  => 'sometimes|string|max:255',
@@ -118,7 +115,7 @@ class UserController extends Controller
 
     public function destroy(User $user): JsonResponse
     {
-        $this->authorizeBranchAccess($user);
+        $this->authorize('delete', $user);
         $user->delete();
 
         return response()->json(['message' => 'User deleted successfully.']);
@@ -179,13 +176,4 @@ class UserController extends Controller
         return response()->json($roles);
     }
 
-    private function authorizeBranchAccess(User $user): void
-    {
-        /** @var \App\Models\User $authUser */
-        $authUser = Auth::user();
-
-        if (! $authUser->hasRole('super-admin') && $authUser->branch_id !== $user->branch_id) {
-            abort(403, 'Access denied to this user.');
-        }
-    }
 }

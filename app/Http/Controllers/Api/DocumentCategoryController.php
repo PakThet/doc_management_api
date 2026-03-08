@@ -73,6 +73,7 @@ class DocumentCategoryController extends Controller
 
     public function destroy(DocumentCategory $documentCategory): JsonResponse
     {
+        $this->authorize('delete document-categories');
         $documentCategory->delete();
 
         return response()->json(['message' => 'Document category deleted successfully.']);

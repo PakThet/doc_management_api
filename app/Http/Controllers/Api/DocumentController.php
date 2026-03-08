@@ -27,7 +27,7 @@ class DocumentController extends Controller
 
     public function index(): JsonResponse
     {
-        $documents = QueryBuilder::for(Document::visible())
+        $documents = QueryBuilder::for(Document::class)
             ->allowedFilters([
                 AllowedFilter::exact('status'),
                 AllowedFilter::exact('visibility'),

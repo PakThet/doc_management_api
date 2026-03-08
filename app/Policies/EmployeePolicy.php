@@ -7,6 +7,13 @@ use App\Models\Employee;
 
 class EmployeePolicy
 {
+    public function before(User $authUser)
+    {
+        if ($authUser->hasRole('super-admin')) {
+            return true;
+        }
+    }
+    
     public function view(User $user, Employee $employee): bool
     {
         return $user->hasPermissionTo('view employees');

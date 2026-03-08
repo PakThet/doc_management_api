@@ -11,7 +11,6 @@ use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Permission\Traits\HasRoles;
 use Laravel\Sanctum\HasApiTokens;
-
 class User extends Authenticatable
 {
     use HasFactory, Notifiable, SoftDeletes, HasRoles, LogsActivity, HasApiTokens;
@@ -67,21 +66,6 @@ class User extends Authenticatable
     }
 
     // ─── Scopes ──────────────────────────────────────────────────────────────────
-
-    public function scopeActive($query)
-    {
-        return $query->where('status', 'active');
-    }
-
-    public function scopeForBranch($query, int $branchId)
-    {
-        return $query->where('branch_id', $branchId);
-    }
-
-    public function scopeByStatus($query, string $status)
-    {
-        return $query->where('status', $status);
-    }
 
     public function scopeSearch($query, string $search)
     {
