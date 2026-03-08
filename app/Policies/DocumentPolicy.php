@@ -14,13 +14,12 @@ class DocumentPolicy
     public function before(User $user, $ability)
     {
         if ($user->hasRole('super-admin')) {
-            return true; // super admins can do anything
+            return true;
         }
     }
 
     public function view(User $user, Document $document): bool
     {
-        // Normal users: only if in the same branch
         return $user->branch_id === $document->branch_id;
     }
 

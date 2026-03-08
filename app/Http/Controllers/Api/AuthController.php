@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Validation\ValidationException;
@@ -38,17 +39,13 @@ class AuthController extends Controller
             ], 403);
         }
 
-        // revoke old tokens
         $user->tokens()->delete();
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
         activity()
             ->causedBy($user)
-            ->withProperties([
-                'ip' => $request->ip(),
-                'user_agent' => $request->userAgent()
-            ])
+            ->withProperties(['ip' => $request->ip(), 'user_agent' => $request->userAgent()])
             ->log('User logged in');
 
         return response()->json([
@@ -64,27 +61,28 @@ class AuthController extends Controller
     public function register(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'branch_id'             => 'nullable|exists:branches,id',
-            'first_name'            => 'required|string|max:255',
-            'last_name'             => 'required|string|max:255',
-            'email'                 => 'required|email|unique:users,email',
-            'phone'                 => 'nullable|string|unique:users,phone',
-            'password'              => ['required', 'confirmed', PasswordRule::min(8)->mixedCase()->numbers()],
+            'branch_id'  => 'nullable|exists:branches,id',
+            'first_name' => 'required|string|max:255',
+            'last_name'  => 'required|string|max:255',
+            'email'      => 'required|email|unique:users,email',
+            'phone'      => 'nullable|string|unique:users,phone',
+            'password'   => ['required', 'confirmed', PasswordRule::min(8)->mixedCase()->numbers()],
+            'image'      => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
-        $validated['password']           = Hash::make($validated['password']);
+        $validated['password']            = Hash::make($validated['password']);
         $validated['password_changed_at'] = now();
 
-        $user = User::create($validated);
+        if ($request->hasFile('image')) {
+            $validated['image'] = $request->file('image')->store('users', 'public');
+        }
 
-        // Assign default role
+        $user = User::create($validated);
         $user->assignRole('staff');
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        activity()
-            ->causedBy($user)
-            ->log('User registered');
+        activity()->causedBy($user)->log('User registered');
 
         return response()->json([
             'message'      => 'Registration successful.',
@@ -106,7 +104,6 @@ class AuthController extends Controller
             ->withProperties(['ip' => $request->ip()])
             ->log('User logged out');
 
-        // Revoke the current token
         $request->user()->currentAccessToken()->delete();
 
         return response()->json(['message' => 'Logged out successfully.']);
@@ -118,9 +115,7 @@ class AuthController extends Controller
     {
         $request->user()->tokens()->delete();
 
-        activity()
-            ->causedBy($request->user())
-            ->log('User logged out from all devices');
+        activity()->causedBy($request->user())->log('User logged out from all devices');
 
         return response()->json(['message' => 'Logged out from all devices successfully.']);
     }
@@ -142,9 +137,7 @@ class AuthController extends Controller
         /** @var \App\Models\User $user */
         $user = $request->user();
 
-        // Revoke current token and issue a new one
         $request->user()->currentAccessToken()->delete();
-
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
@@ -177,12 +170,9 @@ class AuthController extends Controller
             'password_changed_at' => now(),
         ]);
 
-        // Revoke all tokens and force re-login
         $user->tokens()->delete();
 
-        activity()
-            ->causedBy($user)
-            ->log('User changed password');
+        activity()->causedBy($user)->log('User changed password');
 
         return response()->json(['message' => 'Password changed successfully. Please log in again.']);
     }
@@ -191,9 +181,7 @@ class AuthController extends Controller
 
     public function forgotPassword(Request $request): JsonResponse
     {
-        $request->validate([
-            'email' => 'required|email|exists:users,email',
-        ]);
+        $request->validate(['email' => 'required|email|exists:users,email']);
 
         $status = Password::sendResetLink($request->only('email'));
 
@@ -223,14 +211,11 @@ class AuthController extends Controller
                     'password_changed_at' => now(),
                 ])->save();
 
-                // Revoke all existing tokens
                 $user->tokens()->delete();
 
                 event(new PasswordReset($user));
 
-                activity()
-                    ->causedBy($user)
-                    ->log('User reset password via email');
+                activity()->causedBy($user)->log('User reset password via email');
             }
         );
 
@@ -257,9 +242,7 @@ class AuthController extends Controller
 
         $user->markEmailAsVerified();
 
-        activity()
-            ->causedBy($user)
-            ->log('User verified email');
+        activity()->causedBy($user)->log('User verified email');
 
         return response()->json(['message' => 'Email verified successfully.']);
     }
@@ -290,14 +273,21 @@ class AuthController extends Controller
             'last_name'  => 'sometimes|string|max:255',
             'phone'      => "nullable|string|unique:users,phone,{$user->id}",
             'bio'        => 'nullable|string',
-            'image'      => 'nullable|string',
+            'image'      => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
+
+        if ($request->hasFile('image')) {
+            // Delete old image from disk before storing the new one
+            if ($user->image && Storage::disk('public')->exists($user->image)) {
+                Storage::disk('public')->delete($user->image);
+            }
+
+            $validated['image'] = $request->file('image')->store('users', 'public');
+        }
 
         $user->update($validated);
 
-        activity()
-            ->causedBy($user)
-            ->log('User updated profile');
+        activity()->causedBy($user)->log('User updated profile');
 
         return response()->json([
             'message' => 'Profile updated successfully.',
@@ -316,17 +306,13 @@ class AuthController extends Controller
 
         $state = $user->two_factor_enabled ? 'enabled' : 'disabled';
 
-        activity()
-            ->causedBy($user)
-            ->log("User {$state} two-factor authentication");
+        activity()->causedBy($user)->log("User {$state} two-factor authentication");
 
         return response()->json([
             'message'            => "Two-factor authentication {$state}.",
             'two_factor_enabled' => $user->two_factor_enabled,
         ]);
     }
-
-    // ─── Helpers ──────────────────────────────────────────────────────────────
 
     private function userPayload(User $user): array
     {
@@ -337,7 +323,9 @@ class AuthController extends Controller
             'full_name'           => $user->full_name,
             'email'               => $user->email,
             'phone'               => $user->phone,
-            'image'               => $user->image,
+            'image'     => $user->image
+                ? asset('storage/' . $user->image)
+                : null,
             'bio'                 => $user->bio,
             'status'              => $user->status,
             'branch_id'           => $user->branch_id,

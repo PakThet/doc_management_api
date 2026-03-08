@@ -1,5 +1,5 @@
 @baseUrl = http://localhost:8000/api
-@TokenSuperAdmin = 3|WsQtzzgLazc3OPQZHnZ8Odl4bQLCLe9VbS3QaGrr0b18a286
+@TokenSuperAdmin = 2|aOi6gN3Qqub3qFmlP1Nnn0VHPTQByQoz6GzYxkDy9ca98ba4
 @TokenAdmin = 4|TsyNttYyU4nREq6v2NkpO0giF2uRAEMZHfp5GKYk765f207c
 @tokenStaff = 1|UKZVEWw1MQ5KqF3rtNj1rYqf3K25CPjVhdrYCpKr06531532
 @tokenDocVerify = f92967a6-8fb8-4801-8a7b-7958bba4f53b
@@ -127,7 +127,7 @@ Authorization: Bearer
 Accept: application/json
 
 ### Users
-GET {{baseUrl}}/users
+GET {{baseUrl}}/users/
 Authorization: Bearer {{TokenAdmin}}
 Accept: application/json
 

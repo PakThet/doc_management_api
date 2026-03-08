@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
@@ -38,9 +38,11 @@ class UserController extends Controller
             ])
             ->allowedSorts(['first_name', 'last_name', 'email', 'created_at', 'status'])
             ->allowedIncludes(['branch', 'roles', 'permissions']);
-            if (! $authUser->hasRole('super-admin')) {
-        $query->where('branch_id', $authUser->branch_id);
-    }
+
+        if (! $authUser->hasRole('super-admin')) {
+            $query->where('branch_id', $authUser->branch_id);
+        }
+
         $users = $query->paginate(request()->integer('per_page', 15))
             ->appends(request()->query());
 
@@ -59,6 +61,7 @@ class UserController extends Controller
             'status'      => 'in:active,inactive,suspended',
             'password'    => 'required|string|min:8|confirmed',
             'role'        => 'nullable|string|exists:roles,name',
+            'image'       => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
         /** @var \App\Models\User $authUser */
@@ -70,8 +73,13 @@ class UserController extends Controller
             }
         }
 
+        $validated['password'] = bcrypt($validated['password']);
         $role = $validated['role'] ?? null;
         unset($validated['role']);
+
+        if ($request->hasFile('image')) {
+            $validated['image'] = $request->file('image')->store('users', 'public');
+        }
 
         $user = User::create($validated);
 
@@ -89,10 +97,9 @@ class UserController extends Controller
         $user->load(['branch', 'roles']);
 
         return response()->json([
-        'user' => $user,
-        // 'roles' => $user->getRoleNames(),
-        'permissions' => $user->getAllPermissions()->pluck('name'),
-    ]);
+            'user'        => $user,
+            'permissions' => $user->getAllPermissions()->pluck('name'),
+        ]);
     }
 
     public function update(Request $request, User $user): JsonResponse
@@ -100,13 +107,23 @@ class UserController extends Controller
         $this->authorize('update', $user);
 
         $validated = $request->validate([
-            'first_name'  => 'sometimes|string|max:255',
-            'last_name'   => 'sometimes|string|max:255',
-            'phone'       => "nullable|string|unique:users,phone,{$user->id}",
-            'bio'         => 'nullable|string',
-            'image'       => 'nullable|string',
-            'status'      => 'in:active,inactive,suspended',
+            'first_name' => 'sometimes|string|max:255',
+            'last_name'  => 'sometimes|string|max:255',
+            'phone'      => "nullable|string|unique:users,phone,{$user->id}",
+            'bio'        => 'nullable|string',
+            // ✅ Fixed: was 'nullable|string' — must be 'nullable|image|...' for file upload
+            'image'      => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'status'     => 'in:active,inactive,suspended',
         ]);
+
+        if ($request->hasFile('image')) {
+            // Delete old image before storing new one
+            if ($user->image && Storage::disk('public')->exists($user->image)) {
+                Storage::disk('public')->delete($user->image);
+            }
+
+            $validated['image'] = $request->file('image')->store('users', 'public');
+        }
 
         $user->update($validated);
 
@@ -116,6 +133,12 @@ class UserController extends Controller
     public function destroy(User $user): JsonResponse
     {
         $this->authorize('delete', $user);
+
+        // Clean up stored image when deleting user
+        if ($user->image && Storage::disk('public')->exists($user->image)) {
+            Storage::disk('public')->delete($user->image);
+        }
+
         $user->delete();
 
         return response()->json(['message' => 'User deleted successfully.']);
@@ -175,5 +198,4 @@ class UserController extends Controller
 
         return response()->json($roles);
     }
-
 }
