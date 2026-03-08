@@ -38,9 +38,9 @@ OpenAPI JSON Spec: http://127.0.0.1:8000/docs/api.json
 ## Accessing the API
 The seeder creates a global Super Admin for the first organization:
 
-Email: super.admin@system.com
+Email: superadmin@acme.com
 
-Password: password123
+Password: Password@123
 
 
 ## 🚀 USING DOCKER CONTAINER
