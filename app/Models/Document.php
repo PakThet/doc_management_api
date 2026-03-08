@@ -2,19 +2,16 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Str;
-use Spatie\Activitylog\LogOptions;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\Activitylog\Traits\LogsActivity;
-
+use Spatie\Activitylog\LogOptions;
+use App\Traits\HasBranchGlobalScope;
 class Document extends Model
 {
-    use HasFactory, SoftDeletes, LogsActivity;
-
-    protected $table = 'documents';
+    use HasFactory, SoftDeletes, LogsActivity, HasBranchGlobalScope;
 
     protected $fillable = [
         'branch_id',
@@ -34,39 +31,26 @@ class Document extends Model
         'file_size',
         'mime_type',
         'file_path',
+        'is_confidential',
         'qr_token',
         'qr_code_path',
     ];
 
     protected $casts = [
         'expiration_date' => 'date',
-        'file_size' => 'integer',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
-        'deleted_at' => 'datetime',
+        'file_size'       => 'integer',
     ];
-
-    protected static function booted(): void
-    {
-        static::creating(function (self $document): void {
-            if (empty($document->verification_token)) {
-                $document->verification_token = Str::random(64);
-            }
-
-            if (empty($document->qr_token)) {
-                $document->qr_token = (string) Str::uuid();
-            }
-        });
-    }
 
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['document_code', 'title', 'status', 'visibility', 'expiration_date'])
+            ->logAll()
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
-            ->useLogName('document');
+            ->setDescriptionForEvent(fn(string $eventName) => "Document [{$this->document_code}] has been {$eventName}");
     }
+
+    // ─── Relationships ───────────────────────────────────────────────────────────
 
     public function branch(): BelongsTo
     {
@@ -83,119 +67,24 @@ class Document extends Model
         return $this->belongsTo(DocumentPrefix::class, 'document_prefix_id');
     }
 
-    public function createdBy(): BelongsTo
+    public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function updatedBy(): BelongsTo
+    public function updater(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
     }
 
-    public function creator(): BelongsTo
+    // ─── Scopes ──────────────────────────────────────────────────────────────────
+
+    public function scopeSearch($query, string $search)
     {
-        return $this->createdBy();
-    }
-
-    public function updater(): BelongsTo
-    {
-        return $this->updatedBy();
-    }
-
-    public function getFileUrlAttribute(): ?string
-    {
-        return $this->file_path ? asset('storage/' . $this->file_path) : null;
-    }
-
-    public function getQrCodeUrlAttribute(): ?string
-    {
-        return $this->qr_code_path ? asset('storage/' . $this->qr_code_path) : null;
-    }
-
-    public function getVerificationUrlAttribute(): string
-    {
-        return route('documents.verify', $this->verification_token);
-    }
-
-    public function getIsExpiredAttribute(): bool
-    {
-        return (bool) ($this->expiration_date && $this->expiration_date->isPast());
-    }
-
-    public function getFileSizeForHumansAttribute(): string
-    {
-        $bytes = max(0, (int) $this->file_size);
-        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-        $i = 0;
-
-        while ($bytes >= 1024 && $i < count($units) - 1) {
-            $bytes /= 1024;
-            $i++;
-        }
-
-        return round($bytes, 2) . ' ' . $units[$i];
-    }
-
-    public function scopeByBranch($query, $branchId)
-    {
-        return $query->where('branch_id', $branchId);
-    }
-
-    public function scopePublished($query)
-    {
-        return $query->where('status', 'published');
-    }
-
-    public function scopeDraft($query)
-    {
-        return $query->where('status', 'draft');
-    }
-
-    public function scopeArchived($query)
-    {
-        return $query->where('status', 'archived');
-    }
-
-    public function scopeExpired($query)
-    {
-        return $query->where('status', 'expired')
-            ->orWhere(function ($q) {
-                $q->whereNotNull('expiration_date')
-                    ->where('expiration_date', '<', now());
-            });
-    }
-
-    public function scopeValid($query)
-    {
-        return $query->where(function ($q) {
-            $q->whereNull('expiration_date')
-                ->orWhere('expiration_date', '>=', now());
-        })->where('status', 'published');
-    }
-
-    public function scopePublic($query)
-    {
-        return $query->where('visibility', 'public');
-    }
-
-    public function scopePrivate($query)
-    {
-        return $query->where('visibility', 'private');
-    }
-
-    public function scopeRestricted($query)
-    {
-        return $query->where('visibility', 'restricted');
-    }
-
-    public function scopeByCategory($query, $categoryId)
-    {
-        return $query->where('document_category_id', $categoryId);
-    }
-
-    public function scopeCreatedBy($query, $userId)
-    {
-        return $query->where('created_by', $userId);
+        return $query->where(function ($q) use ($search) {
+            $q->where('title', 'like', "%{$search}%")
+              ->orWhere('document_code', 'like', "%{$search}%")
+              ->orWhere('description', 'like', "%{$search}%");
+        });
     }
 }

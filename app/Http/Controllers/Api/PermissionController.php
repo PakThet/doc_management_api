@@ -2,51 +2,56 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Requests\Api\PermissionRequest;
-use App\Models\Permission;
+use App\Http\Controllers\Controller;
+
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Spatie\Permission\Models\Permission;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
 
-class PermissionController extends BaseController
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PermissionController
+// ─────────────────────────────────────────────────────────────────────────────
+
+class PermissionController extends Controller
 {
-    public function index(Request $request)
+    public function __construct()
+    {
+        $this->middleware('auth');
+        $this->middleware('role:super-admin');
+    }
+
+    public function index(): JsonResponse
     {
         $permissions = QueryBuilder::for(Permission::class)
-            ->allowedFilters([
-                AllowedFilter::partial('name'),
-                AllowedFilter::exact('guard_name'),
-            ])
-            ->allowedSorts(['id', 'name', 'guard_name', 'created_at'])
-            ->defaultSort('name')
-            ->paginate((int) $request->integer('per_page', 15));
+            ->allowedFilters([AllowedFilter::partial('name')])
+            ->allowedSorts(['name', 'created_at'])
+            ->paginate(request()->integer('per_page', 15));
 
-        return $this->sendPaginated($permissions, $permissions->items(), 'Permissions retrieved successfully');
+        return response()->json($permissions);
     }
 
-    public function store(PermissionRequest $request)
+    public function store(Request $request): JsonResponse
     {
-        $permission = Permission::create($request->validated());
+        $validated = $request->validate([
+            'name'       => 'required|string|unique:permissions,name',
+            'guard_name' => 'nullable|string',
+        ]);
 
-        return $this->sendResponse($permission, 'Permission created successfully', 201);
+        $permission = Permission::create([
+            'name'       => $validated['name'],
+            'guard_name' => $validated['guard_name'] ?? 'api',
+        ]);
+
+        return response()->json($permission, 201);
     }
 
-    public function show(Permission $permission)
-    {
-        return $this->sendResponse($permission, 'Permission retrieved successfully');
-    }
-
-    public function update(PermissionRequest $request, Permission $permission)
-    {
-        $permission->update($request->validated());
-
-        return $this->sendResponse($permission, 'Permission updated successfully');
-    }
-
-    public function destroy(Permission $permission)
+    public function destroy(Permission $permission): JsonResponse
     {
         $permission->delete();
 
-        return $this->sendResponse(null, 'Permission deleted successfully');
+        return response()->json(['message' => 'Permission deleted successfully.']);
     }
 }

@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -13,8 +13,6 @@ use Spatie\Activitylog\LogOptions;
 class Department extends Model
 {
     use HasFactory, SoftDeletes, LogsActivity;
-
-    protected $table = 'departments';
 
     protected $fillable = [
         'branch_id',
@@ -32,21 +30,20 @@ class Department extends Model
     ];
 
     protected $casts = [
-        'budget' => 'decimal:2',
         'metadata' => 'array',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
-        'deleted_at' => 'datetime',
+        'budget'   => 'decimal:2',
     ];
 
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'code', 'email', 'phone', 'status', 'budget'])
+            ->logAll()
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
-            ->useLogName('department');
+            ->setDescriptionForEvent(fn(string $eventName) => "Department [{$this->name}] has been {$eventName}");
     }
+
+    // ─── Relationships ───────────────────────────────────────────────────────────
 
     public function branch(): BelongsTo
     {
@@ -78,28 +75,20 @@ class Department extends Model
         return $this->hasMany(DocumentPrefix::class);
     }
 
+    // ─── Scopes ──────────────────────────────────────────────────────────────────
+
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
     }
 
-    public function scopeInactive($query)
-    {
-        return $query->where('status', 'inactive');
-    }
-
-    public function scopeByBranch($query, $branchId)
+    public function scopeForBranch($query, int $branchId)
     {
         return $query->where('branch_id', $branchId);
     }
 
-    public function scopeRoot($query)
+    public function scopeRootDepartments($query)
     {
         return $query->whereNull('parent_id');
-    }
-
-    public function scopeWithHead($query)
-    {
-        return $query->whereNotNull('head_of_department_id');
     }
 }

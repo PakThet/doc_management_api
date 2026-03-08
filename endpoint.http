@@ -1,7 +1,8 @@
 @baseUrl = http://localhost:8000/api
-@TokenSuperAdmin = 1|Txuf8DnpgxtKWDDhQ5ToKHxjuvdevOrE4U5zGXT687da3d51
-@TokenAdmin = 3|innXPjpPK8i2OLHV6DcvP2dOfaqaQql6ey5bS1Nb42ecbb01
-@tokenStaff = 2|aVp1AcSsZssNeGJNTGTLNjC2EnrAjbDxPNT3fHKp80f1d16f
+@TokenSuperAdmin = 2|woy5SPsyS8xcP2dn486KLoltBGbjZkSTPFMXhdTP27cc5ff0
+@TokenAdmin = 4|ORMkge6WX7zA0CimPhYfR0HN2m8SVJyTARlCnUUV842daffc
+@tokenStaff = 1|UKZVEWw1MQ5KqF3rtNj1rYqf3K25CPjVhdrYCpKr06531532
+@tokenDocVerify = f92967a6-8fb8-4801-8a7b-7958bba4f53b
 ### Public routes
 
 ### Register
@@ -21,17 +22,18 @@ Content-Type: application/json
 Accept: application/json
 
 {
-    "email": "superadmin@main.com",
-    "password": "password"
+    "email": "superadmin@acme.com",
+    "password": "Password@123"
 }
+
 ### Login Admin
 POST {{baseUrl}}/auth/login
 Content-Type: application/json
 Accept: application/json
 
 {
-    "email": "admin_1@example.com",
-    "password": "password"
+    "email": "admin.acmehq@acme.com",
+    "password": "Password@123"
 }
 ### Login Staff User
 POST {{baseUrl}}/auth/login
@@ -39,8 +41,8 @@ Content-Type: application/json
 Accept: application/json
 
 {
-    "email": "manager@main.com",
-    "password": "password"
+    "email": "staff.acmehq@acme.com",
+    "password": "Password@123"
 }
 
 ### Forgot password
@@ -62,96 +64,198 @@ Content-Type: application/json
     "password_confirmation": "newpassword"
 }
 
-### Document verify (public)
-GET {{baseUrl}}/documents/verify/{{token}}
+### Email verification (public link)
+GET {{baseUrl}}/auth/verify-email/{id}/{hash}
 
+### Document verify (public)
+GET {{baseUrl}}/documents/verify/{{tokenDocVerify}}
+Accept: application/json
 
 ### Protected routes (use Authorization header)
 
 ### Logout
-POST {{baseUrl}}/logout
-Authorization: Bearer {{authToken}}
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer 
+Accept: application/json
 
-### Me
+### Logout all sessions
+POST {{baseUrl}}/auth/logout-all
+Authorization: Bearer 
+Accept: application/json
+
+### Refresh token
+GET {{baseUrl}}/auth/refresh
+Authorization: Bearer 
+Accept: application/json
+
+### Current user
 GET {{baseUrl}}/auth/me
 Accept: application/json
 Authorization: Bearer {{TokenSuperAdmin}}
 
-### Users
-GET {{baseUrl}}/users
-Authorization: Bearer {{tokenStaff}}
+### Update profile
+PUT {{baseUrl}}/auth/profile
+Authorization: Bearer 
 Accept: application/json
-
-### User Spcified
-GET {{baseUrl}}/users/{{id}}
-Authorization: Bearer {{authToken}}
-
-### Create New Users
-POST {{baseUrl}}/users
-Authorization: Bearer {{authToken}}
 Content-Type: application/json
 
 {
-    "name": "Jane Doe",
-    "email": "jane@example.com",
+    "first_name": "New",
+    "last_name": "Name"
+}
+
+### Change password
+POST {{baseUrl}}/auth/change-password
+Authorization: Bearer 
+Accept: application/json
+Content-Type: application/json
+
+{
+    "current_password": "oldpass",
+    "password": "newpass",
+    "password_confirmation": "newpass"
+}
+
+### Toggle two‑factor
+POST {{baseUrl}}/auth/two-factor/toggle
+Authorization: Bearer 
+Accept: application/json
+
+### Resend verification email
+POST {{baseUrl}}/auth/email/verification-notification
+Authorization: Bearer 
+Accept: application/json
+
+### Users
+GET {{baseUrl}}/users
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
+
+### User Specific
+GET {{baseUrl}}/users/23
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
+
+### Create User
+POST {{baseUrl}}/users
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
+Content-Type: application/json
+
+{
+    "first_name": "Pak",
+    "last_name": "Thet",
+    "email": "pakthet@example.com",
     "password": "password",
     "password_confirmation": "password"
 }
 
 ### Update User
-PUT {{baseUrl}}/users/{{id}}
-Authorization: Bearer {{authToken}}
+PUT {{baseUrl}}/users/23
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
 Content-Type: application/json
 
 {
-    "name": "Jane Updated"
+    "last_name": "Thet updated"
 }
 
-### Remove User
-DELETE {{baseUrl}}/users/{{id}}
-Authorization: Bearer {{authToken}}
+### Delete User
+DELETE {{baseUrl}}/users/23
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
 
+### Restore User
+POST {{baseUrl}}/users/23/restore
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
 
-### Assign Roles to User
-POST {{baseUrl}}/users/{{id}}/roles
-Authorization: Bearer {{authToken}}
+### Assign Role
+POST {{baseUrl}}/users/23/assign-role
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
 Content-Type: application/json
 
 {
-    "roles": ["admin"]
+    "role": "staff"
 }
 
-### Organizations
+### Sync Permissions for User
+POST {{baseUrl}}/users/23/sync-permissions
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
+Content-Type: application/json
+
+{
+    "permissions": ["view users", "create users"]
+}
+
+### Available roles list for users
+GET {{baseUrl}}/available-roles
+Authorization: Bearer 
+Accept: application/json
+
+################################# 
+
+# Organization
+
+#################################
 GET {{baseUrl}}/organizations
+Accept: application/json
 Authorization: Bearer {{TokenSuperAdmin}}
 
+###
 POST {{baseUrl}}/organizations
-Authorization: Bearer {{authToken}}
+Authorization: Bearer {{TokenAdmin}}
+Accept: application/json
 Content-Type: application/json
 
 {
-    "name": "My Org"
+    "id": 1,
+    "name": "Test Corporation",
+    "slug": "test-corporation",
+    "email": "info@test.com",
+    "phone": "+1-800-000-0001",
+    "address": "1 Test Blvd, New York, NY 10001",
+    "logo": null,
+    "website": "https:\/\/test.com",
+    "status": "active",
+    "settings": {
+    "timezone": "America\/New_York",
+    "currency": "USD"
+    }
 }
 
 ###
-GET {{baseUrl}}/organizations/{{id}}
-Authorization: Bearer {{authToken}}
-
+GET {{baseUrl}}/organizations/3
+Authorization: Bearer {{TokenAdmin}}
+Accept: application/json
 
 ###
-PUT {{baseUrl}}/organizations/{{id}}
-Authorization: Bearer {{authToken}}
+PUT {{baseUrl}}/organizations/3
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
 Content-Type: application/json
 
 {
-    "name": "New Name"
+    "name": "Update Corporation"
 }
 
 ###
-DELETE {{baseUrl}}/organizations/{{id}}
-Authorization: Bearer {{authToken}}
+DELETE {{baseUrl}}/organizations/3
+Authorization: Bearer {{TokenAdmin}}
+Accept: application/json
 
-### Branches
+### Restore Organization
+POST {{baseUrl}}/organizations/3/restore
+Authorization: Bearer {{TokenAdmin}}
+Accept: application/json
+
+################################# 
+
+# Branches
+
+#################################
 GET {{baseUrl}}/branches
 Accept: application/json
 Authorization: Bearer {{TokenSuperAdmin}}
@@ -159,57 +263,90 @@ Authorization: Bearer {{TokenSuperAdmin}}
 ###
 POST {{baseUrl}}/branches
 Accept: application/json
-Authorization: Bearer {{tokenStaff}}
+Authorization: Bearer {{TokenSuperAdmin}}
 Content-Type: application/json
 
 {
-    "name": "Main Branch",
-    "organization_id": 1
+    "id": 1,
+    "organization_id": 3,
+    "name": "Test HQ",
+    "address": "1 Test Blvd, New York, NY 10001",
+    "phone": "+1-212-000-0001",
+    "email": "hq@test.com",
+    "code": "Test-HQ",
+    "city": "New York",
+    "state": "NY",
+    "country": "USA",
+    "postal_code": "10001",
+    "established_date": "2000-01-15T00:00:00.000000Z",
+    "status": "active",
+    "settings": {
+    "working_hours": "09:00-18:00"
+    }
 }
 
 ###
-GET {{baseUrl}}/branches/{{id}}
-Authorization: Bearer {{authToken}}
+GET {{baseUrl}}/branches/6
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
 
 ###
-PUT {{baseUrl}}/branches/{{id}}
-Authorization: Bearer {{authToken}}
+PUT {{baseUrl}}/branches/6
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
 Content-Type: application/json
 
 {
     "name": "Updated Branch"
 }
 
+###
+DELETE {{baseUrl}}/branches/6
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
 
 ###
-DELETE {{baseUrl}}/branches/{{id}}
-Authorization: Bearer {{authToken}}
+POST {{baseUrl}}/branches/6/restore
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
 
-###
-GET {{baseUrl}}/branches/{{id}}/employees
-Authorization: Bearer {{authToken}}
+################################# 
 
-### Departments
+# Departments
+
+#################################
 GET {{baseUrl}}/departments
-Authorization: Bearer {{authToken}}
+Authorization: Bearer {{tokenStaff}}
 
 ###
 POST {{baseUrl}}/departments
-Authorization: Bearer {{authToken}}
+Authorization: Bearer {{TokenAdmin}}
+Accept: application/json
 Content-Type: application/json
 
 {
-    "name": "HR",
-    "branch_id": 1
+    "branch_id": 1,
+    "name": "Test",
+    "code": "Test-HQ-EXEC",
+    "description": "Test leadership",
+    "parent_id": 1,
+    "email": "exec@acmehq.internal",
+    "phone": null,
+    "location": null,
+    "budget": "500000.00",
+    "status": "active",
+    "metadata": null
 }
 
 ###
-GET {{baseUrl}}/departments/{{id}}
-Authorization: Bearer {{authToken}}
+GET {{baseUrl}}/departments/51
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
 
 ###
-PUT {{baseUrl}}/departments/{{id}}
-Authorization: Bearer {{authToken}}
+PUT {{baseUrl}}/departments/51
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
 Content-Type: application/json
 
 {
@@ -217,78 +354,137 @@ Content-Type: application/json
 }
 
 ###
-DELETE {{baseUrl}}/departments/{{id}}
-Authorization: Bearer {{authToken}}
+DELETE {{baseUrl}}/departments/51
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
 
 ###
-GET {{baseUrl}}/departments-hierarchy
+POST {{baseUrl}}/departments/51/restore
 Authorization: Bearer {{TokenSuperAdmin}}
-
-### Employees
-GET {{baseUrl}}/employees
-Authorization: Bearer {{TokenAdmin}}
 Accept: application/json
+
+################################# 
+
+# Employees
+
+#################################
+GET {{baseUrl}}/employees
+Authorization: Bearer {{tokenStaff}}
 
 ###
 POST {{baseUrl}}/employees
-Authorization: Bearer {{authToken}}
+Authorization: Bearer {{TokenAdmin}}
 Content-Type: application/json
+Accept: application/json
 
 {
-    "name": "Employee Name",
-    "email": "emp@example.com",
-    "department_id": 1
+    "branch_id": 1,
+    "department_id": 1,
+    "employee_code": "Test-HQ-EMP-0002",
+    "first_name": "Marcus",
+    "last_name": "Rivera",
+    "email": "marcus.rivera.2@test-hq.internal",
+    "phone": "+18466836893",
+    "address": "1 Acme Blvd, New York, NY 10001",
+    "status": "active",
+    "employment_type": "full_time",
+    "date_of_birth": "1997-10-04T00:00:00.000000Z",
+    "join_date": "2002-03-01T00:00:00.000000Z",
+    "probation_end_date": null,
+    "confirmation_date": null,
+    "resignation_date": null,
+    "exit_date": null,
+    "position": "Chief Operating Officer",
+    "salary": "200000.00",
+    "emergency_contact_name": null,
+    "emergency_contact_phone": null,
+    "documents": null,
+    "metadata": {
+    "source": "seeder"
+    }
 }
 
 ###
-GET {{baseUrl}}/employees/30
+GET {{baseUrl}}/employees/66
+Accept: application/json
+Authorization: Bearer {{TokenAdmin}}
+
+###
+PUT {{baseUrl}}/employees/66
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
+Content-Type: application/json
+
+{
+    "first_name": "Employee Updated"
+}
+
+###
+DELETE {{baseUrl}}/employees/66
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
+
+###
+POST {{baseUrl}}/employees/66/restore
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
+
+################################# 
+
+# Document categories
+
+#################################
+GET {{baseUrl}}/document-categories
+Authorization: Bearer {{tokenStaff}}
+
+###
+POST {{baseUrl}}/document-categories
+Authorization: Bearer {{TokenAdmin}}
+Accept: application/json
+Content-Type: application/json
+
+{
+    "name": "Category 1",
+    "slug": "cat"
+}
+
+###
+GET {{baseUrl}}/document-categories/11
 Authorization: Bearer {{TokenAdmin}}
 Accept: application/json
 
 ###
-PUT {{baseUrl}}/employees/{{id}}
-Authorization: Bearer {{authToken}}
-Content-Type: application/json
-
-{
-    "name": "Employee Updated"
-}
-
-DELETE {{baseUrl}}/employees/{{id}}
-Authorization: Bearer {{authToken}}
-
-### Document categories (apiResource)
-GET {{baseUrl}}/document-categories
-Authorization: Bearer {{tokenStaff}}
-
-POST {{baseUrl}}/document-categories
-Authorization: Bearer {{authToken}}
-Content-Type: application/json
-
-{
-    "name": "Category 1"
-}
-
-GET {{baseUrl}}/document-categories/{{id}}
-Authorization: Bearer {{authToken}}
-
-PUT {{baseUrl}}/document-categories/{{id}}
-Authorization: Bearer {{authToken}}
+PUT {{baseUrl}}/document-categories/11
+Authorization: Bearer {{TokenAdmin}}
+Accept: application/json
 Content-Type: application/json
 
 {
     "name": "Updated Category"
 }
 
-DELETE {{baseUrl}}/document-categories/{{id}}
-Authorization: Bearer {{authToken}}
+###
+DELETE {{baseUrl}}/document-categories/11
+Authorization: Bearer {{TokenAdmin}}
+Accept: application/json
 
-### Document prefixes
+###
+POST {{baseUrl}}/document-categories/11/restore
+Authorization: Bearer {{TokenAdmin}}
+Accept: application/json
+
+################################# 
+
+# Document prefixes
+
+#################################
 GET {{baseUrl}}/document-prefixes
 Authorization: Bearer {{tokenStaff}}
 
+###
 POST {{baseUrl}}/document-prefixes
-Authorization: Bearer {{authToken}}
+Authorization: Bearer 
+Accept: application/json
 Content-Type: application/json
 
 {
@@ -296,78 +492,124 @@ Content-Type: application/json
     "description": "Documents"
 }
 
-GET {{baseUrl}}/document-prefixes/{{id}}
-Authorization: Bearer {{authToken}}
+###
+GET {{baseUrl}}/document-prefixes/1
+Authorization: Bearer 
+Accept: application/json
 
-PUT {{baseUrl}}/document-prefixes/{{id}}
-Authorization: Bearer {{authToken}}
+###
+PUT {{baseUrl}}/document-prefixes/1
+Authorization: Bearer 
+Accept: application/json
 Content-Type: application/json
 
 {
     "description": "Updated"
 }
 
-DELETE {{baseUrl}}/document-prefixes/{{id}}
-Authorization: Bearer {{authToken}}
+###
+DELETE {{baseUrl}}/document-prefixes/1
+Authorization: Bearer 
+Accept: application/json
 
-### Documents
+###
+POST {{baseUrl}}/document-prefixes/1/restore
+Authorization: Bearer 
+Accept: application/json
+
+################################# 
+
+# Document
+
+#################################
 GET {{baseUrl}}/documents
 Authorization: Bearer {{tokenStaff}}
 
+###
 POST {{baseUrl}}/documents
-Authorization: Bearer {{authToken}}
+Authorization: Bearer 
+Accept: application/json
 Content-Type: multipart/form-data
 
-# include file upload fields accordingly
+###
 
-GET {{baseUrl}}/documents/{{id}}
-Authorization: Bearer {{authToken}}
+GET {{baseUrl}}/documents/53
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
 
-PUT {{baseUrl}}/documents/{{id}}
-Authorization: Bearer {{authToken}}
+###
+PUT {{baseUrl}}/documents/12
+Authorization: Bearer {{TokenAdmin}}
+Accept: application/json
 Content-Type: application/json
 
 {
     "title": "Updated Title"
 }
 
-DELETE {{baseUrl}}/documents/{{id}}
-Authorization: Bearer {{authToken}}
+###
+DELETE {{baseUrl}}/documents/53
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
 
-POST {{baseUrl}}/documents/{{id}}/publish
-Authorization: Bearer {{authToken}}
+###
+POST {{baseUrl}}/documents/1/publish
+Authorization: Bearer 
+Accept: application/json
 
-### Roles & Permissions
+###
+POST {{baseUrl}}/documents/53/restore
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
+
+################################# 
+
+# Roles & Permissions
+
+#################################
 GET {{baseUrl}}/roles
-Authorization: Bearer {{tokenStaff}}
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
+
+###
+GET {{baseUrl}}/roles-permission-matrix
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
+
+###
+GET {{baseUrl}}/roles/2/permissions
+Authorization: Bearer {{TokenSuperAdmin}}
 Accept: application/json
 
 ###
 POST {{baseUrl}}/roles
-Accept: {{$aadToken}}
-Authorization: Bearer {{authToken}}
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
 Content-Type: application/json
 
 {
-    "name": "manager"
+    "name": "human resource"
 }
 
 ###
-PUT {{baseUrl}}/roles/{{id}}
-Authorization: Bearer {{authToken}}
+PUT {{baseUrl}}/roles/7
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
 Content-Type: application/json
 
 {
-    "name": "manager_updated"
+    "name": "human resource"
 }
 
 ###
-DELETE {{baseUrl}}/roles/{{id}}
-Authorization: Bearer {{authToken}}
+DELETE {{baseUrl}}/roles/6
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
 
 ###
-POST {{baseUrl}}/roles/{{id}}/permissions
-Authorization: Bearer {{authToken}}
+POST {{baseUrl}}/roles/2/permissions
+Authorization: Bearer 
+Accept: application/json
 Content-Type: application/json
 
 {
@@ -376,8 +618,25 @@ Content-Type: application/json
 
 ###
 GET {{baseUrl}}/permissions
-Authorization: Bearer {{authToken}}
+Authorization: Bearer 
+Accept: application/json
+
+################################# 
+
+# Activity logs
+
+#################################
+GET {{baseUrl}}/activity-logs
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
 
 ###
-GET {{baseUrl}}/users/{{id}}/permissions
-Authorization: Bearer {{authToken}}
+GET {{baseUrl}}/activity-logs/my
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
+
+###
+GET {{baseUrl}}/activity-logs/1
+Authorization: Bearer {{TokenSuperAdmin}}
+Accept: application/json
+

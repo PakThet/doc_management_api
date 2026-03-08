@@ -2,19 +2,16 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Spatie\Activitylog\LogOptions;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Organization extends Model
 {
     use HasFactory, SoftDeletes, LogsActivity;
-
-    protected $table = 'organizations';
 
     protected $fillable = [
         'name',
@@ -30,52 +27,33 @@ class Organization extends Model
 
     protected $casts = [
         'settings' => 'array',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
-        'deleted_at' => 'datetime',
     ];
 
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'email', 'status', 'phone', 'website'])
+            ->logAll()
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
-            ->useLogName('organization');
+            ->setDescriptionForEvent(fn(string $eventName) => "Organization [{$this->name}] has been {$eventName}");
     }
+
+    // ─── Relationships ───────────────────────────────────────────────────────────
 
     public function branches(): HasMany
     {
         return $this->hasMany(Branch::class);
     }
 
-    public function employees(): HasManyThrough
-    {
-        return $this->hasManyThrough(Employee::class, Branch::class);
-    }
-
-    public function users(): HasManyThrough
-    {
-        return $this->hasManyThrough(User::class, Branch::class);
-    }
-
-    public function documents(): HasManyThrough
-    {
-        return $this->hasManyThrough(Document::class, Branch::class);
-    }
+    // ─── Scopes ──────────────────────────────────────────────────────────────────
 
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
     }
 
-    public function scopeSuspended($query)
+    public function scopeByStatus($query, string $status)
     {
-        return $query->where('status', 'suspended');
-    }
-
-    public function scopeInactive($query)
-    {
-        return $query->where('status', 'inactive');
+        return $query->where('status', $status);
     }
 }

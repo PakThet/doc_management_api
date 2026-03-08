@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Models\Branch;
+use App\Models\Department;
 use App\Models\Employee;
 use Illuminate\Database\Seeder;
 
@@ -9,49 +11,189 @@ class EmployeeSeeder extends Seeder
 {
     public function run(): void
     {
-        $branches = \App\Models\Branch::query()->with('departments')->get();
-        $counter = 1;
+        $branches = Branch::all()->keyBy('code');
 
-        foreach ($branches as $branch) {
-            $department = $branch->departments->first();
-
-            if (! $department) {
-                continue;
-            }
-
-            for ($i = 1; $i <= 5; $i++) {
-                $employeeCode = 'EMP-' . str_pad((string) $branch->id, 2, '0', STR_PAD_LEFT) . '-' . str_pad((string) $i, 3, '0', STR_PAD_LEFT);
-                $email = 'employee' . $counter . '@example.local';
-
-                Employee::updateOrCreate(
-                    ['employee_code' => $employeeCode],
-                    [
-                        'branch_id' => $branch->id,
-                        'department_id' => $department->id,
-                        'first_name' => 'Employee',
-                        'last_name' => (string) $counter,
-                        'email' => $email,
-                        'phone' => '+8553000' . str_pad((string) $counter, 3, '0', STR_PAD_LEFT),
-                        'join_date' => now()->subDays($counter),
-                        'position' => 'Staff',
-                        'status' => 'active',
-                        'employment_type' => 'full_time',
-                    ]
-                );
-
-                $counter++;
-            }
+        foreach ($branches as $code => $branch) {
+            $this->seedBranchEmployees($branch, $code);
         }
 
-        $firstDepartment = \App\Models\Department::query()->first();
-        $firstBranch = \App\Models\Branch::query()->first();
+        $this->command->info('Employees seeded.');
+    }
 
-        if ($firstDepartment && $firstBranch) {
-            $manager = Employee::query()->where('department_id', $firstDepartment->id)->first();
+    private function seedBranchEmployees(Branch $branch, string $branchCode): void
+    {
+        $depts = Department::where('branch_id', $branch->id)
+            ->whereNull('parent_id')
+            ->get()
+            ->keyBy('code');
 
-            if ($manager) {
-                $firstDepartment->update(['head_of_department_id' => $manager->id]);
-            }
+        // Helper to find dept
+        $dept = fn(string $suffix) => $depts["{$branchCode}-{$suffix}"] ?? null;
+
+        $employees = [
+            // ── Executive ──────────────────────────────────────────────────────
+            [
+                'first_name'      => 'Alexandra',
+                'last_name'       => 'Chen',
+                'position'        => 'Chief Executive Officer',
+                'employment_type' => 'full_time',
+                'department_id'   => $dept('EXEC')?->id,
+                'salary'          => 250000.00,
+                'join_date'       => '2000-01-15',
+                'status'          => 'active',
+            ],
+            [
+                'first_name'      => 'Marcus',
+                'last_name'       => 'Rivera',
+                'position'        => 'Chief Operating Officer',
+                'employment_type' => 'full_time',
+                'department_id'   => $dept('EXEC')?->id,
+                'salary'          => 200000.00,
+                'join_date'       => '2002-03-01',
+                'status'          => 'active',
+            ],
+            // ── HR ─────────────────────────────────────────────────────────────
+            [
+                'first_name'      => 'Sophia',
+                'last_name'       => 'Patel',
+                'position'        => 'HR Manager',
+                'employment_type' => 'full_time',
+                'department_id'   => $dept('HR')?->id,
+                'salary'          => 85000.00,
+                'join_date'       => '2015-07-01',
+                'status'          => 'active',
+            ],
+            [
+                'first_name'      => 'James',
+                'last_name'       => 'Nguyen',
+                'position'        => 'HR Specialist',
+                'employment_type' => 'full_time',
+                'department_id'   => $dept('HR')?->id,
+                'salary'          => 60000.00,
+                'join_date'       => '2019-04-15',
+                'status'          => 'active',
+            ],
+            // ── Finance ────────────────────────────────────────────────────────
+            [
+                'first_name'      => 'Diana',
+                'last_name'       => 'Müller',
+                'position'        => 'Chief Financial Officer',
+                'employment_type' => 'full_time',
+                'department_id'   => $dept('FIN')?->id,
+                'salary'          => 180000.00,
+                'join_date'       => '2008-11-01',
+                'status'          => 'active',
+            ],
+            [
+                'first_name'      => 'Kevin',
+                'last_name'       => 'O\'Brien',
+                'position'        => 'Senior Accountant',
+                'employment_type' => 'full_time',
+                'department_id'   => $dept('FIN')?->id,
+                'salary'          => 75000.00,
+                'join_date'       => '2017-02-20',
+                'status'          => 'active',
+            ],
+            // ── IT ─────────────────────────────────────────────────────────────
+            [
+                'first_name'      => 'Nathan',
+                'last_name'       => 'Brooks',
+                'position'        => 'Chief Technology Officer',
+                'employment_type' => 'full_time',
+                'department_id'   => $dept('IT')?->id,
+                'salary'          => 190000.00,
+                'join_date'       => '2010-05-10',
+                'status'          => 'active',
+            ],
+            [
+                'first_name'      => 'Priya',
+                'last_name'       => 'Sharma',
+                'position'        => 'Lead Software Engineer',
+                'employment_type' => 'full_time',
+                'department_id'   => $dept('IT')?->id,
+                'salary'          => 120000.00,
+                'join_date'       => '2016-08-01',
+                'status'          => 'active',
+            ],
+            [
+                'first_name'      => 'Carlos',
+                'last_name'       => 'Mendez',
+                'position'        => 'DevOps Engineer',
+                'employment_type' => 'full_time',
+                'department_id'   => $dept('IT')?->id,
+                'salary'          => 110000.00,
+                'join_date'       => '2018-03-15',
+                'status'          => 'active',
+            ],
+            [
+                'first_name'      => 'Aisha',
+                'last_name'       => 'Johnson',
+                'position'        => 'Software Engineer',
+                'employment_type' => 'full_time',
+                'department_id'   => $dept('IT')?->id,
+                'salary'          => 95000.00,
+                'join_date'       => '2021-01-10',
+                'status'          => 'active',
+            ],
+            // ── Operations ─────────────────────────────────────────────────────
+            [
+                'first_name'      => 'Robert',
+                'last_name'       => 'Kim',
+                'position'        => 'Operations Manager',
+                'employment_type' => 'full_time',
+                'department_id'   => $dept('OPS')?->id,
+                'salary'          => 90000.00,
+                'join_date'       => '2013-09-01',
+                'status'          => 'active',
+            ],
+            [
+                'first_name'      => 'Fatima',
+                'last_name'       => 'Al-Hassan',
+                'position'        => 'Operations Analyst',
+                'employment_type' => 'full_time',
+                'department_id'   => $dept('OPS')?->id,
+                'salary'          => 65000.00,
+                'join_date'       => '2020-06-01',
+                'status'          => 'active',
+            ],
+            [
+                'first_name'      => 'Liam',
+                'last_name'       => 'Thompson',
+                'position'        => 'Logistics Coordinator',
+                'employment_type' => 'contract',
+                'department_id'   => $dept('OPS')?->id,
+                'salary'          => 50000.00,
+                'join_date'       => '2022-03-01',
+                'status'          => 'active',
+            ],
+        ];
+
+        $counter = Employee::where('branch_id', $branch->id)->count();
+
+        foreach ($employees as $index => $data) {
+            $counter++;
+            $paddedCode = str_pad($counter, 4, '0', STR_PAD_LEFT);
+            $employeeCode = "{$branchCode}-EMP-{$paddedCode}";
+            $slug = strtolower($branchCode);
+
+            Employee::firstOrCreate(
+                ['employee_code' => $employeeCode],
+                array_merge($data, [
+                    'branch_id'     => $branch->id,
+                    'employee_code' => $employeeCode,
+                    'email'         => strtolower("{$data['first_name']}.{$data['last_name']}.{$counter}@{$slug}.internal"),
+                    'phone'         => '+1' . rand(2000000000, 9999999999),
+                    'address'       => $branch->address,
+                    'date_of_birth' => now()->subYears(rand(28, 55))->subDays(rand(0, 365))->toDateString(),
+                    'join_date'     => $data['join_date'],
+                    'bank_details'  => [
+                        'bank_name'      => 'National Bank',
+                        'account_number' => '****' . rand(1000, 9999),
+                        'routing_number' => '****' . rand(1000, 9999),
+                    ],
+                    'metadata' => ['source' => 'seeder'],
+                ])
+            );
         }
     }
 }

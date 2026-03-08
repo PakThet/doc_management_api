@@ -2,63 +2,132 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Requests\Api\DepartmentRequest;
-use App\Http\Resources\DepartmentResource;
+use App\Http\Controllers\Controller;
 use App\Models\Department;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
 
-class DepartmentController extends BaseController
+class DepartmentController extends Controller
 {
-    public function index(Request $request)
+    public function __construct()
     {
-        $departments = QueryBuilder::for(Department::class)
-            ->with(['branch', 'parent', 'headOfDepartment'])
+        $this->middleware('auth');
+        $this->middleware('permission:view departments')->only(['index', 'show']);
+        $this->middleware('permission:create departments')->only(['store']);
+        $this->middleware('permission:edit departments')->only(['update']);
+        $this->middleware('permission:delete departments')->only(['destroy']);
+    }
+
+    public function index(): JsonResponse
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        $query = QueryBuilder::for(Department::class)
             ->allowedFilters([
-                AllowedFilter::partial('name'),
+                AllowedFilter::exact('status'),
                 AllowedFilter::exact('branch_id'),
                 AllowedFilter::exact('parent_id'),
-                AllowedFilter::exact('head_of_department_id'),
-                AllowedFilter::exact('status'),
-                AllowedFilter::partial('code'),
+                AllowedFilter::partial('name'),
             ])
-            ->allowedSorts(['id', 'name', 'code', 'created_at'])
-            ->defaultSort('-created_at')
-            ->paginate((int) $request->integer('per_page', 15));
+            ->allowedSorts(['name', 'created_at', 'status'])
+            ->allowedIncludes(['branch', 'parent', 'children', 'headOfDepartment', 'employees', 'documentPrefixes']);
 
-        return $this->sendPaginated(
-            $departments,
-            DepartmentResource::collection($departments->items()),
-            'Departments retrieved successfully'
-        );
+        // Branch scope
+        if (! $user->hasRole('super-admin') && $user->branch_id) {
+            $query->forBranch($user->branch_id);
+        }
+
+        $departments = $query->paginate(request()->integer('per_page', 15))
+            ->appends(request()->query());
+
+        return response()->json($departments);
     }
 
-    public function store(DepartmentRequest $request)
+    public function store(Request $request): JsonResponse
     {
-        $department = Department::create($request->validated());
+        $validated = $request->validate([
+            'branch_id'              => 'required|exists:branches,id',
+            'name'                   => 'required|string|max:255',
+            'code'                   => 'nullable|string|unique:departments,code',
+            'description'            => 'nullable|string',
+            'parent_id'              => 'nullable|exists:departments,id',
+            'head_of_department_id'  => 'nullable|exists:employees,id',
+            'email'                  => 'nullable|email',
+            'phone'                  => 'nullable|string|max:20',
+            'location'               => 'nullable|string',
+            'budget'                 => 'nullable|numeric|min:0',
+            'status'                 => 'in:active,inactive',
+            'metadata'               => 'nullable|array',
+        ]);
 
-        return $this->sendResponse(new DepartmentResource($department), 'Department created successfully', 201);
+        $this->authorizeBranchAccess($validated['branch_id']);
+
+        $department = Department::create($validated);
+
+        return response()->json($department, 201);
     }
 
-    public function show(Department $department)
+    public function show(Department $department): JsonResponse
     {
-        $department->load(['branch', 'parent', 'children', 'headOfDepartment'])->loadCount('employees');
+        $this->authorizeBranchAccess($department->branch_id);
 
-        return $this->sendResponse(new DepartmentResource($department), 'Department retrieved successfully');
+        $department->load(['branch', 'parent', 'children', 'headOfDepartment', 'employees']);
+
+        return response()->json($department);
     }
 
-    public function update(DepartmentRequest $request, Department $department)
+    public function update(Request $request, Department $department): JsonResponse
     {
-        $department->update($request->validated());
+        $this->authorizeBranchAccess($department->branch_id);
 
-        return $this->sendResponse(new DepartmentResource($department), 'Department updated successfully');
+        $validated = $request->validate([
+            'name'                   => 'sometimes|string|max:255',
+            'code'                   => "nullable|string|unique:departments,code,{$department->id}",
+            'description'            => 'nullable|string',
+            'parent_id'              => 'nullable|exists:departments,id',
+            'head_of_department_id'  => 'nullable|exists:employees,id',
+            'email'                  => 'nullable|email',
+            'phone'                  => 'nullable|string|max:20',
+            'location'               => 'nullable|string',
+            'budget'                 => 'nullable|numeric|min:0',
+            'status'                 => 'in:active,inactive',
+            'metadata'               => 'nullable|array',
+        ]);
+
+        $department->update($validated);
+
+        return response()->json($department);
     }
 
-    public function destroy(Department $department)
+    public function destroy(Department $department): JsonResponse
     {
+        $this->authorizeBranchAccess($department->branch_id);
         $department->delete();
 
-        return $this->sendResponse(null, 'Department deleted successfully');
+        return response()->json(['message' => 'Department deleted successfully.']);
+    }
+
+    public function restore(int $id): JsonResponse
+    {
+        $this->authorize('delete departments');
+
+        $department = Department::withTrashed()->findOrFail($id);
+        $department->restore();
+
+        return response()->json(['message' => 'Department restored successfully.']);
+    }
+
+    private function authorizeBranchAccess(int $branchId): void
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        if (! $user->hasRole('super-admin') && $user->branch_id !== $branchId) {
+            abort(403, 'Access denied to this branch.');
+        }
     }
 }

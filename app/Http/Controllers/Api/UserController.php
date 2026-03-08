@@ -2,92 +2,190 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Requests\Api\UserRequest;
-use App\Http\Resources\UserResource;
+use App\Http\Controllers\Controller;
+
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
+use Spatie\Permission\Models\Role;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
 
-class UserController extends BaseController
+class UserController extends Controller
 {
-    public function index(Request $request)
+    public function __construct()
     {
-        $users = QueryBuilder::for(User::class)
-            ->with(['branch', 'roles'])
+        $this->middleware('auth');
+        $this->middleware('permission:view users')->only(['index', 'show']);
+        $this->middleware('permission:create users')->only(['store']);
+        $this->middleware('permission:edit users')->only(['update', 'assignRole', 'syncPermissions']);
+        $this->middleware('permission:delete users')->only(['destroy']);
+    }
+
+    public function index(): JsonResponse
+    {
+        /** @var \App\Models\User $authUser */
+        $authUser = Auth::user();
+
+        $query = QueryBuilder::for(User::class)
             ->allowedFilters([
+                AllowedFilter::exact('status'),
+                AllowedFilter::exact('branch_id'),
                 AllowedFilter::partial('first_name'),
                 AllowedFilter::partial('last_name'),
                 AllowedFilter::partial('email'),
-                AllowedFilter::exact('status'),
-                AllowedFilter::exact('branch_id'),
+                AllowedFilter::scope('search'),
             ])
-            ->allowedSorts(['id', 'first_name', 'last_name', 'email', 'created_at'])
-            ->defaultSort('-created_at')
-            ->paginate((int) $request->integer('per_page', 15));
+            ->allowedSorts(['first_name', 'last_name', 'email', 'created_at', 'status'])
+            ->allowedIncludes(['branch', 'roles', 'permissions']);
 
-        return $this->sendPaginated(
-            $users,
-            UserResource::collection($users->items()),
-            'Users retrieved successfully'
-        );
-    }
-
-    public function store(UserRequest $request)
-    {
-        $data = $request->validated();
-        $data['password'] = Hash::make($data['password']);
-
-        $user = User::create($data);
-
-        if ($request->filled('roles')) {
-            $user->syncRoles($request->input('roles'));
+        if (! $authUser->hasRole('super-admin') && $authUser->branch_id) {
+            $query->forBranch($authUser->branch_id);
         }
 
-        return $this->sendResponse(
-            new UserResource($user->load(['branch', 'roles'])),
-            'User created successfully',
-            201
-        );
+        $users = $query->paginate(request()->integer('per_page', 15))
+            ->appends(request()->query());
+
+        return response()->json($users);
     }
 
-    public function show(User $user)
+    public function store(Request $request): JsonResponse
     {
-        return $this->sendResponse(
-            new UserResource($user->load(['branch', 'roles', 'permissions'])),
-            'User retrieved successfully'
-        );
-    }
+        $validated = $request->validate([
+            'branch_id'   => 'nullable|exists:branches,id',
+            'first_name'  => 'required|string|max:255',
+            'last_name'   => 'required|string|max:255',
+            'email'       => 'required|email|unique:users,email',
+            'phone'       => 'nullable|string|unique:users,phone',
+            'bio'         => 'nullable|string',
+            'status'      => 'in:active,inactive,suspended',
+            'password'    => 'required|string|min:8|confirmed',
+            'role'        => 'nullable|string|exists:roles,name',
+        ]);
 
-    public function update(UserRequest $request, User $user)
-    {
-        $data = $request->validated();
+        /** @var \App\Models\User $authUser */
+        $authUser = Auth::user();
 
-        if (! empty($data['password'])) {
-            $data['password'] = Hash::make($data['password']);
-            $data['password_changed_at'] = Carbon::now();
-        } else {
-            unset($data['password']);
+        if (! $authUser->hasRole('super-admin') && isset($validated['branch_id'])) {
+            if ($authUser->branch_id !== $validated['branch_id']) {
+                abort(403, 'Cannot create users for another branch.');
+            }
         }
 
-        $user->update($data);
+        $role = $validated['role'] ?? null;
+        unset($validated['role']);
 
-        if ($request->has('roles')) {
-            $user->syncRoles($request->input('roles', []));
+        $user = User::create($validated);
+
+        if ($role) {
+            $user->assignRole($role);
         }
 
-        return $this->sendResponse(
-            new UserResource($user->load(['branch', 'roles'])),
-            'User updated successfully'
-        );
+        return response()->json($user->load(['roles', 'permissions']), 201);
     }
 
-    public function destroy(User $user)
+    public function show(User $user): JsonResponse
     {
+        $this->authorizeBranchAccess($user);
+
+        $user->load(['branch', 'roles']);
+
+        return response()->json([
+        'user' => $user,
+        // 'roles' => $user->getRoleNames(),
+        'permissions' => $user->getAllPermissions()->pluck('name'),
+    ]);
+    }
+
+    public function update(Request $request, User $user): JsonResponse
+    {
+        $this->authorizeBranchAccess($user);
+
+        $validated = $request->validate([
+            'first_name'  => 'sometimes|string|max:255',
+            'last_name'   => 'sometimes|string|max:255',
+            'phone'       => "nullable|string|unique:users,phone,{$user->id}",
+            'bio'         => 'nullable|string',
+            'image'       => 'nullable|string',
+            'status'      => 'in:active,inactive,suspended',
+        ]);
+
+        $user->update($validated);
+
+        return response()->json($user);
+    }
+
+    public function destroy(User $user): JsonResponse
+    {
+        $this->authorizeBranchAccess($user);
         $user->delete();
 
-        return $this->sendResponse(null, 'User deleted successfully');
+        return response()->json(['message' => 'User deleted successfully.']);
+    }
+
+    public function restore(int $id): JsonResponse
+    {
+        $this->authorize('delete users');
+
+        $user = User::withTrashed()->findOrFail($id);
+        $user->restore();
+
+        return response()->json(['message' => 'User restored successfully.']);
+    }
+
+    /**
+     * Assign a role to a user.
+     */
+    public function assignRole(Request $request, User $user): JsonResponse
+    {
+        $request->validate([
+            'role' => 'required|string|exists:roles,name',
+        ]);
+
+        $user->syncRoles([$request->role]);
+
+        return response()->json([
+            'message' => "Role [{$request->role}] assigned to user [{$user->full_name}].",
+            'roles'   => $user->getRoleNames(),
+        ]);
+    }
+
+    /**
+     * Sync direct permissions for a user.
+     */
+    public function syncPermissions(Request $request, User $user): JsonResponse
+    {
+        $request->validate([
+            'permissions'   => 'required|array',
+            'permissions.*' => 'string|exists:permissions,name',
+        ]);
+
+        $user->syncPermissions($request->permissions);
+
+        return response()->json([
+            'message'     => "Permissions updated for user [{$user->full_name}].",
+            'permissions' => $user->getAllPermissions()->pluck('name'),
+        ]);
+    }
+
+    /**
+     * List all available roles.
+     */
+    public function roles(): JsonResponse
+    {
+        $roles = Role::with('permissions')->get();
+
+        return response()->json($roles);
+    }
+
+    private function authorizeBranchAccess(User $user): void
+    {
+        /** @var \App\Models\User $authUser */
+        $authUser = Auth::user();
+
+        if (! $authUser->hasRole('super-admin') && $authUser->branch_id !== $user->branch_id) {
+            abort(403, 'Access denied to this user.');
+        }
     }
 }

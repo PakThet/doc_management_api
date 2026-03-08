@@ -1,86 +1,122 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\UserController;
-use App\Http\Controllers\Api\OrganizationController;
+use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\BranchController;
 use App\Http\Controllers\Api\DepartmentController;
-use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\DocumentCategoryController;
-use App\Http\Controllers\Api\DocumentPrefixController;
 use App\Http\Controllers\Api\DocumentController;
-use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\DocumentPrefixController;
+use App\Http\Controllers\Api\EmployeeController;
+use App\Http\Controllers\Api\OrganizationController;
 use App\Http\Controllers\Api\PermissionController;
+use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\AuthController;
+use Illuminate\Support\Facades\Route;
+/*
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+*/
+// ── Public (no auth required) ──────────────────────────────────────────────
+Route::prefix('auth')->name('auth.')->group(function () {
 
-Route::get('/documents/verify/{token}', [DocumentController::class, 'verify'])
-    ->name('documents.verify');
+    Route::post('login',          [AuthController::class, 'login'])->name('login');
+    Route::post('register',       [AuthController::class, 'register'])->name('register');
+    Route::post('forgot-password', [AuthController::class, 'forgotPassword'])->name('forgot-password');
+    Route::post('reset-password', [AuthController::class, 'resetPassword'])->name('reset-password');
 
-Route::prefix('auth')->group(function () {
-    Route::post('login', [AuthController::class, 'login']);
-    Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
-    Route::post('reset-password', [AuthController::class, 'resetPassword']);
-
-    Route::middleware('auth:sanctum')->group(function () {
-        Route::get('me', [AuthController::class, 'me']);
-        Route::post('logout', [AuthController::class, 'logout']);
-    });
+    // Email verification link (signed URL sent via email)
+    Route::get(
+        'verify-email/{id}/{hash}',
+        [AuthController::class, 'verifyEmail']
+    )->middleware('signed')->name('verify-email');
 });
 
+// ── Protected (requires Sanctum token) ────────────────────────────────────
+Route::prefix('auth')->name('auth.')->middleware(['auth:api'])->group(function () {
+
+    Route::post('logout',           [AuthController::class, 'logout'])->name('logout');
+    Route::post('logout-all',       [AuthController::class, 'logoutAll'])->name('logout-all');
+    Route::post('refresh',          [AuthController::class, 'refresh'])->name('refresh');
+    Route::get('me',               [AuthController::class, 'me'])->name('me');
+    Route::put('profile',          [AuthController::class, 'updateProfile'])->name('profile.update');
+    Route::post('change-password',  [AuthController::class, 'changePassword'])->name('change-password');
+    Route::post('two-factor/toggle', [AuthController::class, 'toggleTwoFactor'])->name('two-factor.toggle');
+
+    // Resend email verification
+    Route::post(
+        'email/verification-notification',
+        [AuthController::class, 'resendVerification']
+    )->middleware('throttle:6,1')->name('verification.resend');
+});
+
+
+
+// Public route — document verification via QR/token (no auth)
+Route::get('documents/verify/{token}', [DocumentController::class, 'verify'])->name('documents.verify');
+
 Route::middleware('auth:api')->group(function () {
-    Route::apiResource('organizations', OrganizationController::class)
-        ->except(['create', 'edit']);
 
-    Route::apiResource('branches', BranchController::class)
-        ->except(['create', 'edit'])
-        ->middlewareFor(['index', 'show'], 'permission:branches.view')
-        ->middlewareFor('store', 'permission:branches.create')
-        ->middlewareFor('update', 'permission:branches.update')
-        ->middlewareFor('destroy', 'permission:branches.delete');
+    // ── Organizations ──────────────────────────────────────────────────────────
+    Route::apiResource('organizations', OrganizationController::class);
+    Route::post('organizations/{id}/restore', [OrganizationController::class, 'restore'])
+        ->name('organizations.restore');
 
-    Route::apiResource('departments', DepartmentController::class)
-        ->except(['create', 'edit'])
-        ->middlewareFor(['index', 'show'], 'permission:departments.view')
-        ->middlewareFor('store', 'permission:departments.create')
-        ->middlewareFor('update', 'permission:departments.update')
-        ->middlewareFor('destroy', 'permission:departments.delete');
+    // ── Branches ───────────────────────────────────────────────────────────────
+    Route::apiResource('branches', BranchController::class);
+    Route::post('branches/{id}/restore', [BranchController::class, 'restore'])
+        ->name('branches.restore');
 
-    Route::apiResource('employees', EmployeeController::class)
-        ->except(['create', 'edit'])
-        ->middlewareFor(['index', 'show'], 'permission:employees.view')
-        ->middlewareFor('store', 'permission:employees.create')
-        ->middlewareFor('update', 'permission:employees.update')
-        ->middlewareFor('destroy', 'permission:employees.delete');
+    // ── Departments ────────────────────────────────────────────────────────────
+    Route::apiResource('departments', DepartmentController::class);
+    Route::post('departments/{id}/restore', [DepartmentController::class, 'restore'])
+        ->name('departments.restore');
 
-    Route::apiResource('document-categories', DocumentCategoryController::class)
-        ->parameters(['document-categories' => 'documentCategory'])
-        ->except(['create', 'edit']);
-    Route::apiResource('document-prefixes', DocumentPrefixController::class)
-        ->parameters(['document-prefixes' => 'documentPrefix'])
-        ->except(['create', 'edit']);
+    // ── Employees ──────────────────────────────────────────────────────────────
+    Route::apiResource('employees', EmployeeController::class);
+    Route::post('employees/{id}/restore', [EmployeeController::class, 'restore'])
+        ->name('employees.restore');
 
-    Route::apiResource('documents', DocumentController::class)
-        ->except(['create', 'edit'])
-        ->middlewareFor(['index', 'show'], 'permission:documents.view')
-        ->middlewareFor('store', 'permission:documents.create')
-        ->middlewareFor('update', 'permission:documents.update')
-        ->middlewareFor('destroy', 'permission:documents.delete');
+    // ── Users ──────────────────────────────────────────────────────────────────
+    Route::apiResource('users', UserController::class);
+    Route::post('users/{id}/restore', [UserController::class, 'restore'])
+        ->name('users.restore');
+    Route::post('users/{user}/assign-role', [UserController::class, 'assignRole'])
+        ->name('users.assign-role');
+    Route::post('users/{user}/sync-permissions', [UserController::class, 'syncPermissions'])
+        ->name('users.sync-permissions');
+    Route::get('available-roles', [UserController::class, 'roles'])
+        ->name('users.roles');
 
-    Route::apiResource('users', UserController::class)
-        ->except(['create', 'edit'])
-        ->middlewareFor(['index', 'show'], 'permission:users.view')
-        ->middlewareFor('store', 'permission:users.create')
-        ->middlewareFor('update', 'permission:users.update')
-        ->middlewareFor('destroy', 'permission:users.delete');
+    // ── Document Categories ────────────────────────────────────────────────────
+    Route::apiResource('document-categories', DocumentCategoryController::class);
+    Route::post('document-categories/{id}/restore', [DocumentCategoryController::class, 'restore'])
+        ->name('document-categories.restore');
 
-    Route::apiResource('roles', RoleController::class)
-        ->except(['create', 'edit'])
-        ->middleware('permission:roles.manage');
+    // ── Document Prefixes ──────────────────────────────────────────────────────
+    Route::apiResource('document-prefixes', DocumentPrefixController::class);
+    Route::post('document-prefixes/{id}/restore', [DocumentPrefixController::class, 'restore'])
+        ->name('document-prefixes.restore');
 
-    Route::apiResource('permissions', PermissionController::class)
-        ->except(['create', 'edit'])
-        ->middleware('permission:permissions.manage');
+    // ── Documents ──────────────────────────────────────────────────────────────
+    Route::apiResource('documents', DocumentController::class);
+    Route::post('documents/{id}/restore', [DocumentController::class, 'restore'])
+        ->name('documents.restore');
 
-    Route::post('roles/{role}/permissions', [RoleController::class, 'assignPermissions'])
-        ->middleware('permission:roles.manage');
+    // ── Roles & Permissions (super-admin only) ─────────────────────────────────
+    Route::apiResource('roles', RoleController::class);
+    Route::post('roles/{role}/addPermission', [RoleController::class, 'addPermission']);
+    Route::post('roles/{role}/remove-permission', [RoleController::class, 'removePermission']);
+    Route::get('roles/{role}/permissions', [RoleController::class, 'permissions']);
+    Route::get('roles-permission-matrix', [RoleController::class, 'matrix']);
+    Route::apiResource('permissions', PermissionController::class)->only(['index']);
+
+    // ── Activity Logs ──────────────────────────────────────────────────────────
+    Route::get('activity-logs', [ActivityLogController::class, 'index'])
+        ->name('activity-logs.index');
+    Route::get('activity-logs/my', [ActivityLogController::class, 'myActivity'])
+        ->name('activity-logs.my');
+    Route::get('activity-logs/{activity}', [ActivityLogController::class, 'show'])
+        ->name('activity-logs.show');
 });

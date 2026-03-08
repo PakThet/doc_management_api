@@ -2,19 +2,17 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
-
+use App\Traits\HasBranchGlobalScope;
 class Employee extends Model
 {
-    use HasFactory, SoftDeletes, LogsActivity;
-
-    protected $table = 'employees';
+    use HasFactory, SoftDeletes, LogsActivity, HasBranchGlobalScope;
 
     protected $fillable = [
         'branch_id',
@@ -43,29 +41,38 @@ class Employee extends Model
     ];
 
     protected $casts = [
-        'date_of_birth' => 'date',
-        'join_date' => 'date',
-        'probation_end_date' => 'date',
-        'confirmation_date' => 'date',
-        'resignation_date' => 'date',
-        'exit_date' => 'date',
-        'salary' => 'decimal:2',
-        'bank_details' => 'array',
-        'documents' => 'array',
-        'metadata' => 'array',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
-        'deleted_at' => 'datetime',
+        'date_of_birth'       => 'date',
+        'join_date'           => 'date',
+        'probation_end_date'  => 'date',
+        'confirmation_date'   => 'date',
+        'resignation_date'    => 'date',
+        'exit_date'           => 'date',
+        'salary'              => 'decimal:2',
+        'bank_details'        => 'array',
+        'documents'           => 'array',
+        'metadata'            => 'array',
     ];
+
+    protected $hidden = ['bank_details'];
 
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['employee_code', 'first_name', 'last_name', 'email', 'phone', 'status', 'position', 'salary'])
+            ->logAll()
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
-            ->useLogName('employee');
+            ->dontLogIfAttributesChangedOnly(['updated_at'])
+            ->setDescriptionForEvent(fn(string $eventName) => "Employee [{$this->full_name}] has been {$eventName}");
     }
+
+    // ─── Accessors ───────────────────────────────────────────────────────────────
+
+    public function getFullNameAttribute(): string
+    {
+        return "{$this->first_name} {$this->last_name}";
+    }
+
+    // ─── Relationships ───────────────────────────────────────────────────────────
 
     public function branch(): BelongsTo
     {
@@ -77,58 +84,20 @@ class Employee extends Model
         return $this->belongsTo(Department::class);
     }
 
-    public function headedDepartments(): HasMany
+    public function managedDepartments(): HasMany
     {
         return $this->hasMany(Department::class, 'head_of_department_id');
     }
 
-    public function getFullNameAttribute(): string
-    {
-        return "{$this->first_name} {$this->last_name}";
-    }
+    // ─── Scopes ──────────────────────────────────────────────────────────────────
 
-    public function getAgeAttribute(): ?int
+    public function scopeSearch($query, string $search)
     {
-        return $this->date_of_birth?->age;
-    }
-
-    public function getYearsOfServiceAttribute(): ?int
-    {
-        return $this->join_date?->diffInYears(now());
-    }
-
-    public function scopeActive($query)
-    {
-        return $query->where('status', 'active');
-    }
-
-    public function scopeByBranch($query, $branchId)
-    {
-        return $query->where('branch_id', $branchId);
-    }
-
-    public function scopeByDepartment($query, $departmentId)
-    {
-        return $query->where('department_id', $departmentId);
-    }
-
-    public function scopeByEmploymentType($query, $type)
-    {
-        return $query->where('employment_type', $type);
-    }
-
-    public function scopeOnLeave($query)
-    {
-        return $query->where('status', 'on_leave');
-    }
-
-    public function scopeTerminated($query)
-    {
-        return $query->where('status', 'terminated');
-    }
-
-    public function scopeJoinDateBetween($query, $startDate, $endDate)
-    {
-        return $query->whereBetween('join_date', [$startDate, $endDate]);
+        return $query->where(function ($q) use ($search) {
+            $q->where('first_name', 'like', "%{$search}%")
+              ->orWhere('last_name', 'like', "%{$search}%")
+              ->orWhere('email', 'like', "%{$search}%")
+              ->orWhere('employee_code', 'like', "%{$search}%");
+        });
     }
 }

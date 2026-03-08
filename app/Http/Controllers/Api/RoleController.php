@@ -2,71 +2,156 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Requests\Api\RoleRequest;
-use App\Models\Permission;
-use App\Models\Role;
+use App\Http\Controllers\Controller;
+
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
 
-class RoleController extends BaseController
+// ─────────────────────────────────────────────────────────────────────────────
+// RoleController
+// ─────────────────────────────────────────────────────────────────────────────
+
+class RoleController extends Controller
 {
-    public function index(Request $request)
+    public function __construct()
+    {
+        $this->middleware('auth');
+        $this->middleware('role:super-admin');
+    }
+
+    public function index(): JsonResponse
     {
         $roles = QueryBuilder::for(Role::class)
-            ->with(['permissions', 'branch'])
-            ->allowedFilters([
-                AllowedFilter::partial('name'),
-                AllowedFilter::exact('guard_name'),
-                AllowedFilter::exact('branch_id'),
-            ])
-            ->allowedSorts(['id', 'name', 'guard_name', 'created_at'])
-            ->defaultSort('name')
-            ->paginate((int) $request->integer('per_page', 15));
+            ->allowedFilters([AllowedFilter::partial('name')])
+            ->allowedIncludes(['permissions'])
+            ->allowedSorts(['name', 'created_at'])
+            ->paginate(request()->integer('per_page', 15));
 
-        return $this->sendPaginated($roles, $roles->items(), 'Roles retrieved successfully');
+        return response()->json($roles);
     }
 
-    public function store(RoleRequest $request)
+    public function store(Request $request): JsonResponse
     {
-        $role = Role::create($request->validated());
+        $validated = $request->validate([
+            'name'          => 'required|string|unique:roles,name',
+            'guard_name'    => 'nullable|string',
+            'permissions'   => 'nullable|array',
+            'permissions.*' => 'string|exists:permissions,name',
+        ]);
 
-        return $this->sendResponse($role->load(['permissions', 'branch']), 'Role created successfully', 201);
+        $role = Role::create([
+            'name'       => $validated['name'],
+            'guard_name' => $validated['guard_name'] ?? 'api',
+        ]);
+
+        if (! empty($validated['permissions'])) {
+            $role->syncPermissions($validated['permissions']);
+        }
+
+        return response()->json($role->load('permissions'), 201);
     }
 
-    public function show(Role $role)
+    public function show(Role $role): JsonResponse
     {
-        return $this->sendResponse($role->load(['permissions', 'branch']), 'Role retrieved successfully');
+        return response()->json($role->load('permissions'));
     }
 
-    public function update(RoleRequest $request, Role $role)
+    public function update(Request $request, Role $role): JsonResponse
     {
-        $role->update($request->validated());
+        $validated = $request->validate([
+            'name'          => "sometimes|string|unique:roles,name,{$role->id}",
+            'permissions'   => 'nullable|array',
+            'permissions.*' => 'string|exists:permissions,name',
+        ]);
 
-        return $this->sendResponse($role->load(['permissions', 'branch']), 'Role updated successfully');
+        $role->update(['name' => $validated['name'] ?? $role->name]);
+
+        if (isset($validated['permissions'])) {
+            $role->syncPermissions($validated['permissions']);
+        }
+
+        return response()->json($role->load('permissions'));
     }
 
-    public function destroy(Role $role)
+    public function destroy(Role $role): JsonResponse
     {
         $role->delete();
 
-        return $this->sendResponse(null, 'Role deleted successfully');
+        return response()->json(['message' => 'Role deleted successfully.']);
     }
 
-    public function assignPermissions(Request $request, Role $role)
+
+    public function addPermission(Request $request, Role $role)
     {
-        $validated = $request->validate([
-            'permissions' => ['required', 'array'],
-            'permissions.*' => ['required', Rule::exists('permissions', 'name')],
+        $request->validate([
+            'permissions' => 'required|array'
         ]);
 
-        $permissionNames = Permission::query()
-            ->whereIn('name', $validated['permissions'])
-            ->pluck('name');
+        $role->syncPermissions($request->permissions);
 
-        $role->syncPermissions($permissionNames);
-
-        return $this->sendResponse($role->load('permissions'), 'Permissions assigned successfully');
+        return response()->json([
+            'message' => 'Permissions synced successfully',
+            'role' => $role->name,
+            'permissions' => $role->permissions
+        ]);
     }
+
+    public function removePermission(Request $request, Role $role)
+    {
+        $request->validate([
+            'permission' => 'required|string'
+        ]);
+
+        $role->revokePermissionTo($request->permission);
+
+        return response()->json([
+            'message' => 'Permission removed from role'
+        ]);
+    }
+
+    public function permissions(Role $role): JsonResponse
+    {
+        return response()->json([
+            'role' => $role->name,
+            'permissions' => $role->permissions->pluck('name'),
+        ]);
+    }
+
+    public function matrix(): JsonResponse
+    {
+        $roles = Role::with('permissions')->get();
+        $permissions = Permission::all();
+
+        $matrix = [];
+
+        foreach ($roles as $role) {
+
+            $rolePermissions = $role->permissions->pluck('name')->toArray();
+
+            $permissionMap = [];
+
+            foreach ($permissions as $permission) {
+                $permissionMap[$permission->name] = in_array(
+                    $permission->name,
+                    $rolePermissions
+                );
+            }
+
+            $matrix[] = [
+                'role' => $role->name,
+                'permissions' => $permissionMap,
+            ];
+        }
+
+        return response()->json([
+            // 'roles' => $roles->pluck('name'),
+            // 'permissions' => $permissions->pluck('name'),
+            'matrix' => $matrix,
+        ]);
+    }
+
 }

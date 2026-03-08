@@ -4,41 +4,39 @@ namespace Database\Seeders;
 
 use App\Models\Organization;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 class OrganizationSeeder extends Seeder
 {
     public function run(): void
     {
-        Organization::updateOrCreate(
-            ['slug' => 'main-organization'],
+        $organizations = [
             [
-                'name' => 'Main Organization',
-                'email' => 'info@main.com',
-                'phone' => '+85510000001',
-                'address' => 'Phnom Penh, Cambodia',
-                'website' => 'https://main.local',
-                'status' => 'active',
-                'settings' => [
-                    'timezone' => 'Asia/Bangkok',
-                    'currency' => 'USD',
-                ],
-            ]
-        );
+                'name'     => 'Acme Corporation',
+                'slug'     => 'acme-corporation',
+                'email'    => 'info@acme.com',
+                'phone'    => '+1-800-000-0001',
+                'address'  => '1 Acme Blvd, New York, NY 10001',
+                'website'  => 'https://acme.com',
+                'status'   => 'active',
+                'settings' => ['timezone' => 'America/New_York', 'currency' => 'USD'],
+            ],
+            [
+                'name'     => 'Global Tech Ltd',
+                'slug'     => 'global-tech-ltd',
+                'email'    => 'hello@globaltech.io',
+                'phone'    => '+44-20-0000-0001',
+                'address'  => '10 Tech Square, London, EC1A 1BB',
+                'website'  => 'https://globaltech.io',
+                'status'   => 'active',
+                'settings' => ['timezone' => 'Europe/London', 'currency' => 'GBP'],
+            ],
+        ];
 
-        Organization::updateOrCreate(
-            ['slug' => 'support-organization'],
-            [
-                'name' => 'Support Organization',
-                'email' => 'support@main.com',
-                'phone' => '+85510000002',
-                'address' => 'Siem Reap, Cambodia',
-                'website' => 'https://support.local',
-                'status' => 'active',
-                'settings' => [
-                    'timezone' => 'Asia/Bangkok',
-                    'currency' => 'USD',
-                ],
-            ]
-        );
+        foreach ($organizations as $org) {
+            Organization::firstOrCreate(['slug' => $org['slug']], $org);
+        }
+
+        $this->command->info('Organizations seeded.');
     }
 }

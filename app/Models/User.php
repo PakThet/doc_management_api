@@ -3,23 +3,18 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Spatie\Permission\Traits\HasRoles;
-use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Permission\Traits\HasRoles;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable, SoftDeletes, HasRoles, LogsActivity;
-
-    protected $guard_name = 'api';
-
-    protected $table = 'users';
+    use HasFactory, Notifiable, SoftDeletes, HasRoles, LogsActivity, HasApiTokens;
 
     protected $fillable = [
         'branch_id',
@@ -30,10 +25,9 @@ class User extends Authenticatable
         'bio',
         'status',
         'email',
-        'email_verified_at',
         'two_factor_enabled',
-        'password_changed_at',
         'password',
+        'password_changed_at',
     ];
 
     protected $hidden = [
@@ -42,71 +36,59 @@ class User extends Authenticatable
     ];
 
     protected $casts = [
-        'email_verified_at' => 'datetime',
-        'password_changed_at' => 'datetime',
-        'two_factor_enabled' => 'boolean',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
-        'deleted_at' => 'datetime',
+        'email_verified_at'    => 'datetime',
+        'password_changed_at'  => 'datetime',
+        'two_factor_enabled'   => 'boolean',
+        'password'             => 'hashed',
     ];
 
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['first_name', 'last_name', 'email', 'phone', 'status'])
+            ->logAll()
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
-            ->useLogName('user');
+            ->dontLogIfAttributesChangedOnly(['remember_token', 'updated_at'])
+            ->setDescriptionForEvent(fn(string $eventName) => "User [{$this->full_name}] has been {$eventName}");
     }
 
-    public function branch(): BelongsTo
-    {
-        return $this->belongsTo(Branch::class);
-    }
-
-    public function createdDocuments(): HasMany
-    {
-        return $this->hasMany(Document::class, 'created_by');
-    }
-
-    public function updatedDocuments(): HasMany
-    {
-        return $this->hasMany(Document::class, 'updated_by');
-    }
-
+    // ─── Accessors ───────────────────────────────────────────────────────────────
 
     public function getFullNameAttribute(): string
     {
         return "{$this->first_name} {$this->last_name}";
     }
 
-    public function getInitialsAttribute(): string
+    // ─── Relationships ───────────────────────────────────────────────────────────
+
+    public function branch(): BelongsTo
     {
-        return strtoupper(substr($this->first_name, 0, 1) . substr($this->last_name, 0, 1));
+        return $this->belongsTo(Branch::class);
     }
+
+    // ─── Scopes ──────────────────────────────────────────────────────────────────
 
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
     }
 
-    public function scopeInactive($query)
-    {
-        return $query->where('status', 'inactive');
-    }
-
-    public function scopeSuspended($query)
-    {
-        return $query->where('status', 'suspended');
-    }
-
-    public function scopeByBranch($query, $branchId)
+    public function scopeForBranch($query, int $branchId)
     {
         return $query->where('branch_id', $branchId);
     }
 
-    public function scopeVerified($query)
+    public function scopeByStatus($query, string $status)
     {
-        return $query->whereNotNull('email_verified_at');
+        return $query->where('status', $status);
+    }
+
+    public function scopeSearch($query, string $search)
+    {
+        return $query->where(function ($q) use ($search) {
+            $q->where('first_name', 'like', "%{$search}%")
+              ->orWhere('last_name', 'like', "%{$search}%")
+              ->orWhere('email', 'like', "%{$search}%");
+        });
     }
 }

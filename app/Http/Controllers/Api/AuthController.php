@@ -2,107 +2,352 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Models\Organization;
-use Illuminate\Http\Request;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Validation\ValidationException;
 
-class AuthController extends BaseController
+class AuthController extends Controller
 {
+    // ─── Login ────────────────────────────────────────────────────────────────
+
     public function login(Request $request): JsonResponse
     {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
+        $credentials = $request->validate([
+            'email'    => 'required|email',
+            'password' => 'required|string',
         ]);
 
-        $user = User::with(['branch', 'roles', 'permissions'])
-            ->where('email', $request->email)
-            ->first();
+        $user = User::where('email', $credentials['email'])->first();
 
-        if (! $user || ! Hash::check($request->password, $user->password)) {
+        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             throw ValidationException::withMessages([
                 'email' => ['The provided credentials are incorrect.'],
             ]);
         }
 
         if ($user->status !== 'active') {
-            return $this->sendError('Your account is not active.', [], 403);
+            return response()->json([
+                'message' => 'Your account is ' . $user->status . '. Please contact support.',
+            ], 403);
         }
 
+        // revoke old tokens
         $user->tokens()->delete();
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        return $this->sendResponse([
-            'token_type' => 'Bearer',
-            'token' => $token,
-            'user' => $user
-        ], 'Login successful');
+        activity()
+            ->causedBy($user)
+            ->withProperties([
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent()
+            ])
+            ->log('User logged in');
+
+        return response()->json([
+            'message'      => 'Login successful.',
+            'access_token' => $token,
+            'token_type'   => 'Bearer',
+            'user'         => $this->userPayload($user),
+        ]);
     }
 
-    public function logout(Request $request)
+    // ─── Register ─────────────────────────────────────────────────────────────
+
+    public function register(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'branch_id'             => 'nullable|exists:branches,id',
+            'first_name'            => 'required|string|max:255',
+            'last_name'             => 'required|string|max:255',
+            'email'                 => 'required|email|unique:users,email',
+            'phone'                 => 'nullable|string|unique:users,phone',
+            'password'              => ['required', 'confirmed', PasswordRule::min(8)->mixedCase()->numbers()],
+        ]);
+
+        $validated['password']           = Hash::make($validated['password']);
+        $validated['password_changed_at'] = now();
+
+        $user = User::create($validated);
+
+        // Assign default role
+        $user->assignRole('staff');
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        activity()
+            ->causedBy($user)
+            ->log('User registered');
+
+        return response()->json([
+            'message'      => 'Registration successful.',
+            'access_token' => $token,
+            'token_type'   => 'Bearer',
+            'user'         => $this->userPayload($user),
+        ], 201);
+    }
+
+    // ─── Logout ───────────────────────────────────────────────────────────────
+
+    public function logout(Request $request): JsonResponse
+    {
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+
+        activity()
+            ->causedBy($user)
+            ->withProperties(['ip' => $request->ip()])
+            ->log('User logged out');
+
+        // Revoke the current token
         $request->user()->currentAccessToken()->delete();
 
-        return $this->sendResponse(null, 'Logged out successfully');
+        return response()->json(['message' => 'Logged out successfully.']);
     }
 
-    public function me(Request $request)
+    // ─── Logout from all devices ──────────────────────────────────────────────
+
+    public function logoutAll(Request $request): JsonResponse
     {
-        $user = $request->user()->load([
-            'branch',
-            'roles',
-            'permissions'
-        ]);
+        $request->user()->tokens()->delete();
 
-        return $this->sendResponse($user, 'User retrieved successfully');
+        activity()
+            ->causedBy($request->user())
+            ->log('User logged out from all devices');
+
+        return response()->json(['message' => 'Logged out from all devices successfully.']);
     }
 
-    public function forgotPassword(Request $request)
+    // ─── Authenticated user ───────────────────────────────────────────────────
+
+    public function me(Request $request): JsonResponse
+    {
+        /** @var \App\Models\User $user */
+        $user = $request->user()->load(['branch', 'roles', 'permissions']);
+
+        return response()->json($this->userPayload($user));
+    }
+
+    // ─── Refresh token ────────────────────────────────────────────────────────
+
+    public function refresh(Request $request): JsonResponse
+    {
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+
+        // Revoke current token and issue a new one
+        $request->user()->currentAccessToken()->delete();
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'message'      => 'Token refreshed.',
+            'access_token' => $token,
+            'token_type'   => 'Bearer',
+        ]);
+    }
+
+    // ─── Change password ──────────────────────────────────────────────────────
+
+    public function changePassword(Request $request): JsonResponse
     {
         $request->validate([
-            'email' => 'required|email'
+            'current_password' => 'required|string',
+            'password'         => ['required', 'confirmed', PasswordRule::min(8)->mixedCase()->numbers()],
         ]);
 
-        $status = Password::sendResetLink(
-            $request->only('email')
-        );
+        /** @var \App\Models\User $user */
+        $user = $request->user();
 
-        if ($status === Password::RESET_LINK_SENT) {
-            return $this->sendResponse(null, 'Password reset link sent');
+        if (! Hash::check($request->current_password, $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => ['The current password is incorrect.'],
+            ]);
         }
 
-        return $this->sendError('Unable to send reset link', ['email' => __($status)], 400);
+        $user->update([
+            'password'            => Hash::make($request->password),
+            'password_changed_at' => now(),
+        ]);
+
+        // Revoke all tokens and force re-login
+        $user->tokens()->delete();
+
+        activity()
+            ->causedBy($user)
+            ->log('User changed password');
+
+        return response()->json(['message' => 'Password changed successfully. Please log in again.']);
     }
 
+    // ─── Forgot password ──────────────────────────────────────────────────────
 
-    public function resetPassword(Request $request)
+    public function forgotPassword(Request $request): JsonResponse
     {
         $request->validate([
-            'token' => 'required',
-            'email' => 'required|email',
-            'password' => 'required|min:8|confirmed',
+            'email' => 'required|email|exists:users,email',
+        ]);
+
+        $status = Password::sendResetLink($request->only('email'));
+
+        if ($status !== Password::RESET_LINK_SENT) {
+            return response()->json(['message' => __($status)], 400);
+        }
+
+        return response()->json(['message' => 'Password reset link sent to your email.']);
+    }
+
+    // ─── Reset password ───────────────────────────────────────────────────────
+
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'token'    => 'required|string',
+            'email'    => 'required|email',
+            'password' => ['required', 'confirmed', PasswordRule::min(8)->mixedCase()->numbers()],
         ]);
 
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
-            function ($user, $password) {
-                $user->password = Hash::make($password);
-                $user->password_changed_at = now();
-                $user->save();
+            function (User $user, string $password) {
+                $user->forceFill([
+                    'password'            => Hash::make($password),
+                    'remember_token'      => Str::random(60),
+                    'password_changed_at' => now(),
+                ])->save();
+
+                // Revoke all existing tokens
+                $user->tokens()->delete();
+
+                event(new PasswordReset($user));
+
+                activity()
+                    ->causedBy($user)
+                    ->log('User reset password via email');
             }
         );
 
-        if ($status === Password::PASSWORD_RESET) {
-            return $this->sendResponse(null, 'Password reset successfully');
+        if ($status !== Password::PASSWORD_RESET) {
+            return response()->json(['message' => __($status)], 400);
         }
 
-        return $this->sendError('Unable to reset password', ['email' => __($status)], 400);
+        return response()->json(['message' => 'Password has been reset successfully. Please log in.']);
+    }
+
+    // ─── Email verification ───────────────────────────────────────────────────
+
+    public function verifyEmail(Request $request, int $id, string $hash): JsonResponse
+    {
+        $user = User::findOrFail($id);
+
+        if (! hash_equals(sha1($user->getEmailForVerification()), $hash)) {
+            return response()->json(['message' => 'Invalid verification link.'], 400);
+        }
+
+        if ($user->hasVerifiedEmail()) {
+            return response()->json(['message' => 'Email already verified.']);
+        }
+
+        $user->markEmailAsVerified();
+
+        activity()
+            ->causedBy($user)
+            ->log('User verified email');
+
+        return response()->json(['message' => 'Email verified successfully.']);
+    }
+
+    public function resendVerification(Request $request): JsonResponse
+    {
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+
+        if ($user->hasVerifiedEmail()) {
+            return response()->json(['message' => 'Email is already verified.'], 400);
+        }
+
+        $user->sendEmailVerificationNotification();
+
+        return response()->json(['message' => 'Verification email resent.']);
+    }
+
+    // ─── Update profile ───────────────────────────────────────────────────────
+
+    public function updateProfile(Request $request): JsonResponse
+    {
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'first_name' => 'sometimes|string|max:255',
+            'last_name'  => 'sometimes|string|max:255',
+            'phone'      => "nullable|string|unique:users,phone,{$user->id}",
+            'bio'        => 'nullable|string',
+            'image'      => 'nullable|string',
+        ]);
+
+        $user->update($validated);
+
+        activity()
+            ->causedBy($user)
+            ->log('User updated profile');
+
+        return response()->json([
+            'message' => 'Profile updated successfully.',
+            'user'    => $this->userPayload($user->fresh(['branch', 'roles', 'permissions'])),
+        ]);
+    }
+
+    // ─── Two-Factor toggle ────────────────────────────────────────────────────
+
+    public function toggleTwoFactor(Request $request): JsonResponse
+    {
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+
+        $user->update(['two_factor_enabled' => ! $user->two_factor_enabled]);
+
+        $state = $user->two_factor_enabled ? 'enabled' : 'disabled';
+
+        activity()
+            ->causedBy($user)
+            ->log("User {$state} two-factor authentication");
+
+        return response()->json([
+            'message'            => "Two-factor authentication {$state}.",
+            'two_factor_enabled' => $user->two_factor_enabled,
+        ]);
+    }
+
+    // ─── Helpers ──────────────────────────────────────────────────────────────
+
+    private function userPayload(User $user): array
+    {
+        return [
+            'id'                  => $user->id,
+            'first_name'          => $user->first_name,
+            'last_name'           => $user->last_name,
+            'full_name'           => $user->full_name,
+            'email'               => $user->email,
+            'phone'               => $user->phone,
+            'image'               => $user->image,
+            'bio'                 => $user->bio,
+            'status'              => $user->status,
+            'branch_id'           => $user->branch_id,
+            'branch'              => $user->relationLoaded('branch') ? $user->branch : null,
+            'two_factor_enabled'  => $user->two_factor_enabled,
+            'email_verified_at'   => $user->email_verified_at,
+            'password_changed_at' => $user->password_changed_at,
+            'roles'               => $user->relationLoaded('roles') ? $user->getRoleNames() : [],
+            'permissions'         => $user->relationLoaded('permissions') ? $user->getAllPermissions()->pluck('name') : [],
+            'created_at'          => $user->created_at,
+        ];
     }
 }
