@@ -1,0 +1,59 @@
+version: "1.0"
+
+services:
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        image: pos-app
+        container_name: pos-app
+        restart: unless-stopped
+        working_dir: /var/www
+        volumes:
+            - .:/var/www
+            - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini # PHP config if needed
+        networks:
+            - pos-network
+        depends_on:
+            - db
+        environment:
+            SERVICE_NAME: app
+            SERVICE_TAGS: dev
+
+    db:
+        image: mysql:8.0
+        container_name: pos-db
+        restart: unless-stopped
+        environment:
+            MYSQL_ROOT_PASSWORD: root
+            MYSQL_DATABASE: pos
+            MYSQL_USER: user
+            MYSQL_PASSWORD: pass
+        ports:
+            - "3306:3306"
+        volumes:
+            - db-data:/var/lib/mysql
+        networks:
+            - pos-network
+
+    nginx:
+        image: nginx:alpine
+        container_name: pos-nginx
+        restart: unless-stopped
+        ports:
+            - "80:80" # HTTP port
+            # - "443:443" # Uncomment this for HTTPS (SSL) support
+        volumes:
+            - .:/var/www:cached
+            - ./docker/nginx:/etc/nginx/conf.d
+        depends_on:
+            - app
+        networks:
+            - pos-network
+
+networks:
+    qpos-network:
+        driver: bridge
+
+volumes:
+    db-data:
