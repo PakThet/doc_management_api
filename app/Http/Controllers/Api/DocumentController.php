@@ -19,7 +19,7 @@ class DocumentController extends Controller
     {
         $this->middleware('auth:api')->except(['verify']);
 
-        $this->middleware('permission:view documents')->only(['index','show']);
+        $this->middleware('permission:view documents')->only(['index', 'show']);
         $this->middleware('permission:create documents')->only(['store']);
         $this->middleware('permission:edit documents')->only(['update']);
         $this->middleware('permission:delete documents')->only(['destroy']);
@@ -36,10 +36,22 @@ class DocumentController extends Controller
                 AllowedFilter::partial('document_code'),
                 AllowedFilter::scope('search'),
             ])
-            ->allowedSorts(['title','document_code','created_at','expiration_date'])
-            ->allowedIncludes(['branch','category','prefix','creator','updater'])
-            ->paginate(request()->integer('per_page',15))
+            ->allowedSorts(['title', 'document_code', 'created_at', 'expiration_date'])
+            ->allowedIncludes(['branch', 'category', 'prefix', 'creator', 'updater'])
+            ->paginate(request()->integer('per_page', 15))
             ->appends(request()->query());
+        $documents->getCollection()->transform(function ($doc) {
+
+            $doc->file_url = $doc->file_path
+                ? url(Storage::url($doc->file_path))
+                : null;
+
+            $doc->qr_code_url = $doc->qr_code_path
+                ? url(Storage::url($doc->qr_code_path))
+                : null;
+
+            return $doc;
+        });
 
         return response()->json($documents);
     }
@@ -67,7 +79,7 @@ class DocumentController extends Controller
 
             $file = $request->file('file');
 
-            $path = $file->store('documents','public');
+            $path = $file->store('documents', 'public');
 
             $validated['file_name'] = $file->getClientOriginalName();
             $validated['file_type'] = $file->getClientOriginalExtension();
@@ -90,21 +102,27 @@ class DocumentController extends Controller
 
         $document = Document::create($validated);
 
-        return response()->json($document,201);
+        return response()->json($document, 201);
     }
 
     public function show(Document $document): JsonResponse
     {
-        $this->authorize('view',$document);
+        $this->authorize('view', $document);
 
-        $document->load(['branch','category','prefix','creator','updater']);
+        $document->load(['branch', 'category', 'prefix', 'creator', 'updater']);
+        $document->file_url = $document->file_path
+            ? url(Storage::url($document->file_path))
+            : null;
 
+        $document->qr_code_url = $document->qr_code_path
+            ? url(Storage::url($document->qr_code_path))
+            : null;
         return response()->json($document);
     }
 
     public function update(Request $request, Document $document): JsonResponse
     {
-        $this->authorize('update',$document);
+        $this->authorize('update', $document);
 
         $validated = $request->validate([
             'document_category_id' => 'nullable|exists:document_categories,id',
@@ -118,7 +136,7 @@ class DocumentController extends Controller
             'is_confidential' => 'nullable|boolean',
         ]);
 
-        $validated['updated_by']=Auth::id();
+        $validated['updated_by'] = Auth::id();
 
         if (isset($validated['is_confidential'])) {
             if ($validated['is_confidential'] && !$document->verification_token) {
@@ -165,7 +183,7 @@ class DocumentController extends Controller
             $validated['file_path'] = $path;
         }
 
-        
+
         $document->update($validated);
 
         return response()->json($document);
@@ -173,7 +191,7 @@ class DocumentController extends Controller
 
     public function destroy(Document $document): JsonResponse
     {
-        $this->authorize('delete',$document);
+        $this->authorize('delete', $document);
         if ($document->file_path && Storage::disk('public')->exists($document->file_path)) {
             Storage::disk('public')->delete($document->file_path);
         }
@@ -185,7 +203,7 @@ class DocumentController extends Controller
         $document->delete();
 
         return response()->json([
-            'message'=>'Document deleted successfully'
+            'message' => 'Document deleted successfully'
         ]);
     }
 
@@ -193,27 +211,27 @@ class DocumentController extends Controller
     {
         $document = Document::withTrashed()->findOrFail($id);
 
-        $this->authorize('restore',$document);
+        $this->authorize('restore', $document);
 
         $document->restore();
 
         return response()->json([
-            'message'=>'Document restored successfully'
+            'message' => 'Document restored successfully'
         ]);
     }
 
     public function verify(string $token): JsonResponse
     {
-        $document = Document::where('verification_token',$token)
-            ->orWhere('qr_token',$token)
+        $document = Document::where('verification_token', $token)
+            ->orWhere('qr_token', $token)
             ->firstOrFail();
 
         return response()->json([
-            'document_code'=>$document->document_code,
-            'title'=>$document->title,
-            'status'=>$document->status,
-            'issued_by'=>$document->branch->name ?? null,
-            'expiration'=>$document->expiration_date,
+            'document_code' => $document->document_code,
+            'title' => $document->title,
+            'status' => $document->status,
+            'issued_by' => $document->branch->name ?? null,
+            'expiration' => $document->expiration_date,
         ]);
     }
 }
