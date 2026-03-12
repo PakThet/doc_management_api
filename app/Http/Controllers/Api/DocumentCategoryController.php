@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
+use Illuminate\Support\Str;
 
 class DocumentCategoryController extends Controller
 {
@@ -40,10 +41,11 @@ class DocumentCategoryController extends Controller
     {
         $validated = $request->validate([
             'name'        => 'required|string|max:255',
-            'slug'        => 'required|string|unique:document_categories,slug',
             'description' => 'nullable|string',
             'status'      => 'in:active,inactive',
         ]);
+
+        $validated['slug'] = Str::slug($validated['name']);
 
         $category = DocumentCategory::create($validated);
 
@@ -66,6 +68,10 @@ class DocumentCategoryController extends Controller
             'status'      => 'in:active,inactive',
         ]);
 
+        if (isset($validated['name'])) {
+            $validated['slug'] = Str::slug($validated['name']);
+        }
+        
         $documentCategory->update($validated);
 
         return response()->json($documentCategory);

@@ -111,17 +111,14 @@ class UserController extends Controller
             'last_name'  => 'sometimes|string|max:255',
             'phone'      => "nullable|string|unique:users,phone,{$user->id}",
             'bio'        => 'nullable|string',
-            // ✅ Fixed: was 'nullable|string' — must be 'nullable|image|...' for file upload
             'image'      => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'status'     => 'in:active,inactive,suspended',
         ]);
 
         if ($request->hasFile('image')) {
-            // Delete old image before storing new one
             if ($user->image && Storage::disk('public')->exists($user->image)) {
                 Storage::disk('public')->delete($user->image);
             }
-
             $validated['image'] = $request->file('image')->store('users', 'public');
         }
 
@@ -134,7 +131,6 @@ class UserController extends Controller
     {
         $this->authorize('delete', $user);
 
-        // Clean up stored image when deleting user
         if ($user->image && Storage::disk('public')->exists($user->image)) {
             Storage::disk('public')->delete($user->image);
         }
@@ -154,9 +150,6 @@ class UserController extends Controller
         return response()->json(['message' => 'User restored successfully.']);
     }
 
-    /**
-     * Assign a role to a user.
-     */
     public function assignRole(Request $request, User $user): JsonResponse
     {
         $request->validate([
@@ -171,9 +164,6 @@ class UserController extends Controller
         ]);
     }
 
-    /**
-     * Sync direct permissions for a user.
-     */
     public function syncPermissions(Request $request, User $user): JsonResponse
     {
         $request->validate([
@@ -189,13 +179,9 @@ class UserController extends Controller
         ]);
     }
 
-    /**
-     * List all available roles.
-     */
     public function roles(): JsonResponse
     {
         $roles = Role::with('permissions')->get();
-
         return response()->json($roles);
     }
 }

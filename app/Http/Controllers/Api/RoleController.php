@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
+use App\Models\User;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RoleController
@@ -60,6 +62,7 @@ class RoleController extends Controller
         return response()->json($role->load('permissions'));
     }
 
+    // can disable 
     public function update(Request $request, Role $role): JsonResponse
     {
         $validated = $request->validate([
@@ -79,6 +82,11 @@ class RoleController extends Controller
 
     public function destroy(Role $role): JsonResponse
     {
+        /** @var User|null $user */
+        $user = Auth::user();
+        if (! $user->hasRole('super-admin')) {
+        return response()->json(['message' => 'Unauthorized'], 403);
+    }
         $role->delete();
 
         return response()->json(['message' => 'Role deleted successfully.']);
@@ -87,6 +95,15 @@ class RoleController extends Controller
 
     public function addPermission(Request $request, Role $role)
     {
+        /** @var User|null $user */
+        $user = Auth::user();
+        if (! $user->hasRole('super-admin')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        if ($role->name === 'super-admin') {
+            return response()->json(['message' => 'Cannot modify the super-admin Permission'], 403);
+        }
         $request->validate([
             'permissions' => 'required|array'
         ]);
@@ -100,6 +117,7 @@ class RoleController extends Controller
         ]);
     }
 
+    // can disable
     public function removePermission(Request $request, Role $role)
     {
         $request->validate([
@@ -148,8 +166,8 @@ class RoleController extends Controller
         }
 
         return response()->json([
-            // 'roles' => $roles->pluck('name'),
-            // 'permissions' => $permissions->pluck('name'),
+            'roles' => $roles->pluck('name'),
+            'permissions' => $permissions->pluck('name'),
             'matrix' => $matrix,
         ]);
     }

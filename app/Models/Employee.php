@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
 use App\Traits\HasBranchGlobalScope;
+
 class Employee extends Model
 {
     use HasFactory, SoftDeletes, LogsActivity, HasBranchGlobalScope;
@@ -36,7 +37,6 @@ class Employee extends Model
         'emergency_contact_name',
         'emergency_contact_phone',
         'bank_details',
-        'documents',
         'metadata',
     ];
 
@@ -49,7 +49,6 @@ class Employee extends Model
         'exit_date'           => 'date',
         'salary'              => 'decimal:2',
         'bank_details'        => 'array',
-        'documents'           => 'array',
         'metadata'            => 'array',
     ];
 
@@ -73,7 +72,10 @@ class Employee extends Model
     }
 
     // ─── Relationships ───────────────────────────────────────────────────────────
-
+    public function achievements()
+    {
+        return $this->hasMany(Achievement::class);
+    }
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
@@ -89,15 +91,20 @@ class Employee extends Model
         return $this->hasMany(Department::class, 'head_of_department_id');
     }
 
+    public function documents()
+{
+    return $this->hasMany(EmployeeDocument::class);
+}
+
     // ─── Scopes ──────────────────────────────────────────────────────────────────
 
     public function scopeSearch($query, string $search)
     {
         return $query->where(function ($q) use ($search) {
             $q->where('first_name', 'like', "%{$search}%")
-              ->orWhere('last_name', 'like', "%{$search}%")
-              ->orWhere('email', 'like', "%{$search}%")
-              ->orWhere('employee_code', 'like', "%{$search}%");
+                ->orWhere('last_name', 'like', "%{$search}%")
+                ->orWhere('email', 'like', "%{$search}%")
+                ->orWhere('employee_code', 'like', "%{$search}%");
         });
     }
 }

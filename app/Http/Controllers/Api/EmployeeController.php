@@ -3,11 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-
 use App\Models\Employee;
+use App\Models\Achievement;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
 
@@ -22,6 +23,7 @@ class EmployeeController extends Controller
         $this->middleware('permission:delete employees')->only(['destroy']);
     }
 
+    // List employees
     public function index(): JsonResponse
     {
         $employees = QueryBuilder::for(Employee::class)
@@ -35,113 +37,167 @@ class EmployeeController extends Controller
                 AllowedFilter::partial('position'),
                 AllowedFilter::scope('search'),
             ])
-            ->allowedSorts([
-                'first_name',
-                'last_name',
-                'join_date',
-                'created_at',
-                'status',
-                'position'
+            ->allowedSorts(['first_name', 'last_name', 'join_date', 'created_at', 'status', 'position'])
+            ->allowedIncludes([
+                'branch',
+                'department',
+                // 'documents', 
+                // 'achievements'
             ])
-            ->allowedIncludes(['branch', 'department', 'managedDepartments'])
             ->paginate(request()->integer('per_page', 15))
             ->appends(request()->query());
 
         return response()->json($employees);
     }
 
+    // Create employee
     public function store(Request $request): JsonResponse
     {
-        $this->authorize('create', Employee::class);
-
         $validated = $request->validate([
-            'branch_id'                => 'required|exists:branches,id',
-            'department_id'            => 'nullable|exists:departments,id',
-            'employee_code'            => 'required|string|unique:employees,employee_code',
-            'first_name'               => 'required|string|max:255',
-            'last_name'                => 'required|string|max:255',
-            'email'                    => 'required|email|unique:employees,email',
-            'phone'                    => 'nullable|string|max:20|unique:employees,phone',
-            'address'                  => 'nullable|string',
-            'status'                   => 'in:active,inactive,terminated,on_leave',
-            'employment_type'          => 'in:full_time,part_time,contract,intern,temporary',
-            'date_of_birth'            => 'nullable|date',
-            'join_date'                => 'required|date',
-            'probation_end_date'       => 'nullable|date',
-            'confirmation_date'        => 'nullable|date',
-            'resignation_date'         => 'nullable|date',
-            'exit_date'                => 'nullable|date',
-            'position'                 => 'required|string|max:255',
-            'salary'                   => 'nullable|numeric|min:0',
-            'emergency_contact_name'   => 'nullable|string',
-            'emergency_contact_phone'  => 'nullable|string|max:20',
-            'bank_details'             => 'nullable|array',
-            'documents'                => 'nullable|array',
-            'metadata'                 => 'nullable|array',
+            'branch_id' => 'required|exists:branches,id',
+            'department_id' => 'nullable|exists:departments,id',
+            'employee_code' => 'required|string|unique:employees',
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => 'required|email|unique:employees',
+            'phone' => 'nullable|string|max:20|unique:employees,phone',
+            'join_date' => 'required|date',
+            'position' => 'required|string|max:255',
+            'salary' => 'nullable|numeric|min:0',
+            'status' => 'nullable|in:active,inactive,terminated,on_leave',
+            'employment_type' => 'nullable|in:full_time,part_time,contract,intern,temporary',
+            'documents' => 'nullable|array',
+            'documents.*' => 'file|mimes:pdf,doc,docx,jpg,jpeg,png|max:5120',
+            'achievements' => 'nullable|array',
+            'achievements.*.title' => 'required|string|max:255',
+            'achievements.*.achievement_date' => 'nullable|date',
         ]);
 
-        $employee = Employee::create($validated);
+        DB::beginTransaction();
+        try {
+            // Upload documents
+            $documents = [];
+            if ($request->hasFile('documents')) {
+                foreach ($request->file('documents') as $file) {
+                    $documents[] = $file->store('employees/documents', 'public');
+                }
+            }
+            $validated['documents'] = $documents;
 
-        return response()->json($employee, 201);
+            // Create employee
+            $employee = Employee::create($validated);
+
+            // Create achievements
+            if ($request->has('achievements')) {
+                foreach ($request->achievements as $ach) {
+                    $employee->achievements()->create([
+                        'title' => $ach['title'],
+                        'achievement_date' => $ach['achievement_date'] ?? now(),
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            $employee->load(['documents', 'achievements']);
+
+            return response()->json([
+                'message' => 'Employee created successfully',
+                'data' => $employee
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Failed to create employee', 'error' => $e->getMessage()], 500);
+        }
     }
 
+    // Show employee
     public function show(Employee $employee): JsonResponse
     {
-        $this->authorize('view', $employee);
-
-        $employee->load(['branch', 'department', 'managedDepartments']);
-
+        $employee->load(['documents', 'achievements', 'branch', 'department']);
         return response()->json($employee);
     }
 
+    // Update employee
     public function update(Request $request, Employee $employee): JsonResponse
     {
-        $this->authorize('update', $employee);
-
         $validated = $request->validate([
-            'department_id'            => 'nullable|exists:departments,id',
-            'first_name'               => 'sometimes|string|max:255',
-            'last_name'                => 'sometimes|string|max:255',
-            'email'                    => "sometimes|email|unique:employees,email,{$employee->id}",
-            'phone'                    => "nullable|string|max:20|unique:employees,phone,{$employee->id}",
-            'address'                  => 'nullable|string',
-            'status'                   => 'in:active,inactive,terminated,on_leave',
-            'employment_type'          => 'in:full_time,part_time,contract,intern,temporary',
-            'date_of_birth'            => 'nullable|date',
-            'join_date'                => 'sometimes|date',
-            'probation_end_date'       => 'nullable|date',
-            'confirmation_date'        => 'nullable|date',
-            'resignation_date'         => 'nullable|date',
-            'exit_date'                => 'nullable|date',
-            'position'                 => 'sometimes|string|max:255',
-            'salary'                   => 'nullable|numeric|min:0',
-            'emergency_contact_name'   => 'nullable|string',
-            'emergency_contact_phone'  => 'nullable|string|max:20',
-            'bank_details'             => 'nullable|array',
-            'documents'                => 'nullable|array',
-            'metadata'                 => 'nullable|array',
+            'department_id' => 'nullable|exists:departments,id',
+            'first_name' => 'sometimes|string|max:255',
+            'last_name' => 'sometimes|string|max:255',
+            'email' => "sometimes|email|unique:employees,email,{$employee->id}",
+            'phone' => "nullable|string|max:20|unique:employees,phone,{$employee->id}",
+            'position' => 'sometimes|string|max:255',
+            'salary' => 'nullable|numeric|min:0',
+            'status' => 'nullable|in:active,inactive,terminated,on_leave',
+            'employment_type' => 'nullable|in:full_time,part_time,contract,intern,temporary',
+            'documents' => 'nullable|array',
+            'documents.*' => 'file|mimes:pdf,doc,docx,jpg,jpeg,png|max:5120',
+            'remove_documents' => 'nullable|array',
+            'remove_documents.*' => 'string',
+            'achievements' => 'nullable|array',
+            'achievements.*.title' => 'required|string|max:255',
+            'achievements.*.achievement_date' => 'nullable|date',
         ]);
 
-        $employee->update($validated);
+        DB::beginTransaction();
+        try {
+            // Remove old documents
+            $documents = $employee->documents ?? [];
+            if ($request->filled('remove_documents')) {
+                foreach ($request->remove_documents as $file) {
+                    Storage::disk('public')->delete($file);
+                    $documents = array_filter($documents, fn($doc) => $doc !== $file);
+                }
+            }
 
-        return response()->json($employee);
+            // Upload new documents
+            if ($request->hasFile('documents')) {
+                foreach ($request->file('documents') as $file) {
+                    $documents[] = $file->store('employees/documents', 'public');
+                }
+            }
+            $validated['documents'] = array_values($documents);
+
+            // Update employee
+            $employee->update($validated);
+
+            // Add new achievements
+            if ($request->has('achievements')) {
+                foreach ($request->achievements as $ach) {
+                    $employee->achievements()->create([
+                        'title' => $ach['title'],
+                        'achievement_date' => $ach['achievement_date'] ?? now(),
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            $employee->load(['documents', 'achievements']);
+
+            return response()->json([
+                'message' => 'Employee updated successfully',
+                'data' => $employee
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Failed to update employee', 'error' => $e->getMessage()], 500);
+        }
     }
 
+    // Delete employee
     public function destroy(Employee $employee): JsonResponse
     {
-        $this->authorize('delete', $employee);
-
-        return response()->json(['message' => 'Employee deleted successfully.']);
+        $employee->delete();
+        return response()->json(['message' => 'Employee deleted successfully']);
     }
 
-    public function restore(int $id): JsonResponse
+    // Restore employee
+    public function restore($id): JsonResponse
     {
-        $this->authorize('delete employees');
-
         $employee = Employee::withTrashed()->findOrFail($id);
         $employee->restore();
-
-        return response()->json(['message' => 'Employee restored successfully.']);
+        return response()->json(['message' => 'Employee restored successfully']);
     }
-
 }

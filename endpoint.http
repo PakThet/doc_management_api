@@ -1,10 +1,10 @@
 @baseUrl = http://localhost:8000/api
-@TokenSuperAdmin = 9|aJoUSRfbEhZuyyTRuJmjudSYH8dkLh9S8RhRexRdf61a854d
+@TokenSuperAdmin = 10|AXoDDxmnwykt4U6xKi0jCoEMDAN5u6LOPaAa2dhm0d3dddfb
 @TokenAdmin = 4|TsyNttYyU4nREq6v2NkpO0giF2uRAEMZHfp5GKYk765f207c
 @tokenStaff = 1|UKZVEWw1MQ5KqF3rtNj1rYqf3K25CPjVhdrYCpKr06531532
 @tokenDocVerify = f92967a6-8fb8-4801-8a7b-7958bba4f53b
 ### Public routes
-
+# php artisan serve --host=0.0.0.0 --port=8000
 ### Register
 POST {{baseUrl}}/register
 Content-Type: application/json
@@ -369,7 +369,7 @@ Accept: application/json
 
 #################################
 GET {{baseUrl}}/employees
-Authorization: Bearer {{TokenAdmin}}
+Authorization: Bearer {{TokenSuperAdmin}}
 Accept: application/json
 
 ###

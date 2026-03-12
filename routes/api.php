@@ -12,7 +12,9 @@ use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\EmployeeDocumentController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\AchievementController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -60,6 +62,7 @@ Route::middleware('auth:api')->group(function () {
 
     // ── Organizations ──────────────────────────────────────────────────────────
     Route::apiResource('organizations', OrganizationController::class);
+
     Route::post('organizations/{id}/restore', [OrganizationController::class, 'restore'])
         ->name('organizations.restore');
 
@@ -75,8 +78,19 @@ Route::middleware('auth:api')->group(function () {
 
     // ── Employees ──────────────────────────────────────────────────────────────
     Route::apiResource('employees', EmployeeController::class);
-    Route::post('employees/{id}/restore', [EmployeeController::class, 'restore'])
-        ->name('employees.restore');
+
+    Route::post('employees/{employee}/restore', [EmployeeController::class, 'restore']);
+
+    Route::prefix('employees/{employee}')->group(function () {
+
+        Route::get('documents', [EmployeeDocumentController::class, 'index']);
+
+        Route::post('documents', [EmployeeDocumentController::class, 'upload']);
+    });
+
+    Route::get('employee-documents/{id}/download', [EmployeeDocumentController::class, 'download']);
+
+    Route::delete('employee-documents/{id}', [EmployeeDocumentController::class, 'destroy']);
 
     // ── Users ──────────────────────────────────────────────────────────────────
     Route::apiResource('users', UserController::class);
@@ -112,6 +126,8 @@ Route::middleware('auth:api')->group(function () {
     Route::get('roles-permission-matrix', [RoleController::class, 'matrix']);
     Route::apiResource('permissions', PermissionController::class)->only(['index']);
 
+    // ── Achievement ──────────────────────────────────────────────────────────
+    Route::apiResource('achievements', AchievementController::class);
     // ── Activity Logs ──────────────────────────────────────────────────────────
     Route::get('activity-logs', [ActivityLogController::class, 'index'])
         ->name('activity-logs.index');
@@ -119,4 +135,6 @@ Route::middleware('auth:api')->group(function () {
         ->name('activity-logs.my');
     Route::get('activity-logs/{activity}', [ActivityLogController::class, 'show'])
         ->name('activity-logs.show');
+    Route::delete('activity-logs/{id}', [ActivityLogController::class, 'destroy'])
+    ->middleware(['auth', 'permission:delete activity-logs']);
 });

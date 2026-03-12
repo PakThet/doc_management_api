@@ -65,4 +65,24 @@ class ActivityLogController extends Controller
 
         return response()->json($logs);
     }
+
+    public function destroy(int $id): JsonResponse
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        // Optional: only allow super-admins
+        if (! $user->hasRole('super-admin')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $activity = Activity::find($id);
+        if (! $activity) {
+            return response()->json(['message' => 'Activity not found'], 404);
+        }
+
+        $activity->delete();
+
+        return response()->json(['message' => 'Activity deleted']);
+    }
 }

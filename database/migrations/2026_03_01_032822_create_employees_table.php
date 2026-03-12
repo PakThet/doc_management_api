@@ -37,7 +37,6 @@ return new class extends Migration
             $table->string('emergency_contact_name')->nullable();
             $table->string('emergency_contact_phone', 20)->nullable();
             $table->json('bank_details')->nullable();
-            $table->json('documents')->nullable();
             $table->json('metadata')->nullable();
             $table->timestamps();
             $table->softDeletes();
