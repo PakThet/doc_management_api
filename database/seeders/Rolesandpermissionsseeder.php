@@ -14,7 +14,6 @@ class RolesAndPermissionsSeeder extends Seeder
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
         $resources = [
-            'organizations',
             'branches',
             'departments',
             'employees',
@@ -25,6 +24,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'roles',
             'permissions',
             'activity-logs',
+            'positions',
         ];
 
         $actions = ['view', 'create', 'edit', 'delete'];
@@ -52,7 +52,6 @@ class RolesAndPermissionsSeeder extends Seeder
         // ── manager: branch-level management ──────────────────────────────────
         $manager = Role::firstOrCreate(['name' => 'manager']);
         $manager->syncPermissions([
-            'view organizations',
             'view branches', 'edit branches',
             'view departments', 'create departments', 'edit departments', 'delete departments',
             'view employees', 'create employees', 'edit employees', 'delete employees',

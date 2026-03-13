@@ -24,7 +24,6 @@ return new class extends Migration
             $table->string('location')->nullable();
             $table->decimal('budget', 15, 2)->nullable();
             $table->enum('status', ['active', 'inactive'])->default('active');
-            $table->json('metadata')->nullable();
             $table->timestamps();
             $table->softDeletes();
 

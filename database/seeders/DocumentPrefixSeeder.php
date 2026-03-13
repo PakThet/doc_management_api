@@ -113,9 +113,7 @@ class DocumentPrefixSeeder extends Seeder
                 DocumentPrefix::firstOrCreate(
                     ['prefix' => $prefixData['prefix']],
                     array_merge($prefixData, [
-                        'department_id' => $dept->id,
                         'status'        => 'active',
-                        'metadata'      => ['branch_code' => $branchCode],
                     ])
                 );
             }

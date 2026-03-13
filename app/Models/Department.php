@@ -26,11 +26,9 @@ class Department extends Model
         'location',
         'budget',
         'status',
-        'metadata',
     ];
 
     protected $casts = [
-        'metadata' => 'array',
         'budget'   => 'decimal:2',
     ];
 
@@ -68,11 +66,6 @@ class Department extends Model
     public function employees(): HasMany
     {
         return $this->hasMany(Employee::class);
-    }
-
-    public function documentPrefixes(): HasMany
-    {
-        return $this->hasMany(DocumentPrefix::class);
     }
 
     // ─── Scopes ──────────────────────────────────────────────────────────────────

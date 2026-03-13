@@ -56,42 +56,6 @@ class AuthController extends Controller
         ]);
     }
 
-    // ─── Register ─────────────────────────────────────────────────────────────
-
-    public function register(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'branch_id'  => 'nullable|exists:branches,id',
-            'first_name' => 'required|string|max:255',
-            'last_name'  => 'required|string|max:255',
-            'email'      => 'required|email|unique:users,email',
-            'phone'      => 'nullable|string|unique:users,phone',
-            'password'   => ['required', 'confirmed', PasswordRule::min(8)->mixedCase()->numbers()],
-            'image'      => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
-        ]);
-
-        $validated['password']            = Hash::make($validated['password']);
-        $validated['password_changed_at'] = now();
-
-        if ($request->hasFile('image')) {
-            $validated['image'] = $request->file('image')->store('users', 'public');
-        }
-
-        $user = User::create($validated);
-        $user->assignRole('staff');
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        activity()->causedBy($user)->log('User registered');
-
-        return response()->json([
-            'message'      => 'Registration successful.',
-            'access_token' => $token,
-            'token_type'   => 'Bearer',
-            'user'         => $this->userPayload($user),
-        ], 201);
-    }
-
     // ─── Logout ───────────────────────────────────────────────────────────────
 
     public function logout(Request $request): JsonResponse
@@ -109,17 +73,6 @@ class AuthController extends Controller
         return response()->json(['message' => 'Logged out successfully.']);
     }
 
-    // ─── Logout from all devices ──────────────────────────────────────────────
-
-    public function logoutAll(Request $request): JsonResponse
-    {
-        $request->user()->tokens()->delete();
-
-        activity()->causedBy($request->user())->log('User logged out from all devices');
-
-        return response()->json(['message' => 'Logged out from all devices successfully.']);
-    }
-
     // ─── Authenticated user ───────────────────────────────────────────────────
 
     public function me(Request $request): JsonResponse
@@ -129,25 +82,6 @@ class AuthController extends Controller
 
         return response()->json($this->userPayload($user));
     }
-
-    // ─── Refresh token ────────────────────────────────────────────────────────
-
-    public function refresh(Request $request): JsonResponse
-    {
-        /** @var \App\Models\User $user */
-        $user = $request->user();
-
-        $request->user()->currentAccessToken()->delete();
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'message'      => 'Token refreshed.',
-            'access_token' => $token,
-            'token_type'   => 'Bearer',
-        ]);
-    }
-
-    // ─── Change password ──────────────────────────────────────────────────────
 
     public function changePassword(Request $request): JsonResponse
     {
@@ -176,8 +110,6 @@ class AuthController extends Controller
 
         return response()->json(['message' => 'Password changed successfully. Please log in again.']);
     }
-
-    // ─── Forgot password ──────────────────────────────────────────────────────
 
     public function forgotPassword(Request $request): JsonResponse
     {

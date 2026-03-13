@@ -16,6 +16,10 @@ return new class extends Migration
                 ->nullable()
                 ->constrained()
                 ->nullOnDelete();
+            $table->foreignId('position_id')
+                ->constrained('positions')
+                ->cascadeOnDelete();
+
             $table->string('employee_code')->unique();
             $table->string('first_name');
             $table->string('last_name');
@@ -32,7 +36,6 @@ return new class extends Migration
             $table->date('confirmation_date')->nullable();
             $table->date('resignation_date')->nullable();
             $table->date('exit_date')->nullable();
-            $table->string('position');
             $table->decimal('salary', 15, 2)->nullable();
             $table->string('emergency_contact_name')->nullable();
             $table->string('emergency_contact_phone', 20)->nullable();

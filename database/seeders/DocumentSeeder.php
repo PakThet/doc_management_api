@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Branch;
 use App\Models\Document;
 use App\Models\DocumentCategory;
+use App\Models\DocumentGroup;
 use App\Models\DocumentPrefix;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -32,9 +33,20 @@ class DocumentSeeder extends Seeder
             return;
         }
 
-        $prefixes = DocumentPrefix::whereHas('department', function ($q) use ($branch) {
-            $q->where('branch_id', $branch->id);
-        })->get();
+        $prefixes = DocumentPrefix::where('status', 'active')->get();
+
+        // Get document groups for this branch
+        $groups = DocumentGroup::where('branch_id', $branch->id)->get()->keyBy('name');
+
+        // Map categories to groups
+        $categoryToGroupMap = [
+            'hr-documents' => 'HR Documents',
+            'financial-reports' => 'Financial Reports',
+            'policies' => 'Policies',
+            'compliance' => 'Compliance',
+            'technical-specifications' => 'Contracts',
+            'training-materials' => 'Training Materials',
+        ];
 
         $documents = [
             // ── HR Documents ────────────────────────────────────────────────────
@@ -166,10 +178,22 @@ class DocumentSeeder extends Seeder
                 $docCode = strtoupper($prefix->prefix . '-' . Str::random(6));
             }
 
+            // Find appropriate group based on category
+            $groupId = null;
+            if ($doc['document_category_id']) {
+                $category = DocumentCategory::find($doc['document_category_id']);
+                if ($category && isset($categoryToGroupMap[$category->slug])) {
+                    $groupName = $categoryToGroupMap[$category->slug];
+                    $group = $groups[$groupName] ?? null;
+                    $groupId = $group?->id;
+                }
+            }
+
             Document::firstOrCreate(
                 ['document_code' => $docCode],
                 array_merge($doc, [
                     'branch_id'           => $branch->id,
+                    'group_id'            => $groupId,
                     'document_prefix_id'  => $prefix->id,
                     'created_by'          => $creator->id,
                     'updated_by'          => $creator->id,

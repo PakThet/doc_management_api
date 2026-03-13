@@ -44,6 +44,11 @@ class RoleController extends Controller
             'permissions'   => 'nullable|array',
             'permissions.*' => 'string|exists:permissions,name',
         ]);
+        if ($validated['name'] === 'super-admin') {
+            return response()->json([
+                'message' => 'Super Admin role already exists and cannot be recreated.'
+            ], 403);
+        }
 
         $role = Role::create([
             'name'       => $validated['name'],
@@ -65,6 +70,12 @@ class RoleController extends Controller
     // can disable 
     public function update(Request $request, Role $role): JsonResponse
     {
+        if ($role->name === 'super-admin') {
+            return response()->json([
+                'message' => 'Super Admin role cannot be modified.'
+            ], 403);
+        }
+
         $validated = $request->validate([
             'name'          => "sometimes|string|unique:roles,name,{$role->id}",
             'permissions'   => 'nullable|array',
@@ -85,8 +96,19 @@ class RoleController extends Controller
         /** @var User|null $user */
         $user = Auth::user();
         if (! $user->hasRole('super-admin')) {
-        return response()->json(['message' => 'Unauthorized'], 403);
-    }
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+        if ($role->name === 'super-admin') {
+            return response()->json([
+                'message' => 'Super Admin role cannot be deleted.'
+            ], 403);
+        }
+
+        if ($role->users()->count() > 0) {
+            return response()->json([
+                'message' => 'Cannot delete role assigned to users.'
+            ], 400);
+        }
         $role->delete();
 
         return response()->json(['message' => 'Role deleted successfully.']);
@@ -104,30 +126,17 @@ class RoleController extends Controller
         if ($role->name === 'super-admin') {
             return response()->json(['message' => 'Cannot modify the super-admin Permission'], 403);
         }
-        $request->validate([
-            'permissions' => 'required|array'
+        $validated = $request->validate([
+            'permissions'   => 'required|array',
+            'permissions.*' => 'string|exists:permissions,name',
         ]);
 
-        $role->syncPermissions($request->permissions);
+        $role->syncPermissions($validated['permissions']);
 
         return response()->json([
             'message' => 'Permissions synced successfully',
             'role' => $role->name,
             'permissions' => $role->permissions
-        ]);
-    }
-
-    // can disable
-    public function removePermission(Request $request, Role $role)
-    {
-        $request->validate([
-            'permission' => 'required|string'
-        ]);
-
-        $role->revokePermissionTo($request->permission);
-
-        return response()->json([
-            'message' => 'Permission removed from role'
         ]);
     }
 
@@ -171,5 +180,4 @@ class RoleController extends Controller
             'matrix' => $matrix,
         ]);
     }
-
 }

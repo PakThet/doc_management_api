@@ -18,6 +18,7 @@ class Employee extends Model
     protected $fillable = [
         'branch_id',
         'department_id',
+        'position_id',
         'employee_code',
         'first_name',
         'last_name',
@@ -32,7 +33,6 @@ class Employee extends Model
         'confirmation_date',
         'resignation_date',
         'exit_date',
-        'position',
         'salary',
         'emergency_contact_name',
         'emergency_contact_phone',
@@ -91,10 +91,15 @@ class Employee extends Model
         return $this->hasMany(Department::class, 'head_of_department_id');
     }
 
+    public function position()
+    {
+        return $this->belongsTo(Position::class);
+    }
+
     public function documents()
-{
-    return $this->hasMany(EmployeeDocument::class);
-}
+    {
+        return $this->hasMany(EmployeeDocument::class);
+    }
 
     // ─── Scopes ──────────────────────────────────────────────────────────────────
 

@@ -12,29 +12,37 @@ class DatabaseSeeder extends Seeder
      * Order matters — each seeder depends on data from the previous ones.
      *
      *  1. RolesAndPermissionsSeeder  — Spatie roles/permissions (no dependencies)
-     *  2. OrganizationSeeder         — Organizations (no dependencies)
-     *  3. BranchSeeder               — Branches        (needs organizations)
-     *  4. DepartmentSeeder           — Departments     (needs branches)
-     *  5. EmployeeSeeder             — Employees       (needs branches + departments)
+     *  2. BranchSeeder               — Branches        (no dependencies)
+     *  3. DepartmentSeeder           — Departments     (needs branches)
+     *  4. PositionSeeder             — Positions       (needs departments)
+     *  5. EmployeeSeeder             — Employees       (needs branches + departments + positions)
      *  6. DepartmentHeadSeeder       — Assigns HOD     (needs departments + employees)
      *  7. UserSeeder                 — System users    (needs branches + roles)
      *  8. DocumentCategorySeeder     — Doc categories  (no dependencies)
-     *  9. DocumentPrefixSeeder       — Doc prefixes    (needs branches + departments)
-     * 10. DocumentSeeder             — Documents       (needs all of the above)
+     *  9. DocumentPrefixSeeder       — Doc prefixes    (needs branches)
+     * 10. DocumentGroupSeeder        — Doc groups      (needs branches + users)
+     * 11. DocumentSeeder             — Documents       (needs all of the above)
+     * 12. EmployeeDocumentSeeder     — Employee docs   (needs employees)
+     * 13. AchievementSeeder          — Achievements    (needs employees)
+     * 14. ActivityLogSeeder          — Activity logs   (needs all of the above)
      */
     public function run(): void
     {
         $this->call([
             RolesAndPermissionsSeeder::class,
-            OrganizationSeeder::class,
             BranchSeeder::class,
             DepartmentSeeder::class,
+            UserSeeder::class,
+            PositionSeeder::class,
             EmployeeSeeder::class,
             DepartmentHeadSeeder::class,
-            UserSeeder::class,
             DocumentCategorySeeder::class,
             DocumentPrefixSeeder::class,
+            DocumentGroupSeeder::class,
             DocumentSeeder::class,
+            EmployeeDocumentSeeder::class,
+            AchievementSeeder::class,
+            ActivityLogSeeder::class,
         ]);
 
         $this->command->info('');

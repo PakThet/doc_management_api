@@ -9,9 +9,10 @@ return new class extends Migration
     {
         Schema::create('branches', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('organization_id')
-                ->constrained()
-                ->cascadeOnDelete();
+            $table->foreignId('head_of_branch_id')
+                ->nullable()
+                ->constrained('employees')
+                ->nullOnDelete();
             $table->string('name');
             $table->text('address')->nullable();
             $table->string('phone', 20)->nullable();
@@ -23,7 +24,6 @@ return new class extends Migration
             $table->string('postal_code', 20)->nullable();
             $table->date('established_date')->nullable();
             $table->enum('status', ['active', 'inactive'])->default('active');
-            $table->json('settings')->nullable();
             $table->timestamps();
             $table->softDeletes();
 

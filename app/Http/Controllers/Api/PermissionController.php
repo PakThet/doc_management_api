@@ -32,26 +32,4 @@ class PermissionController extends Controller
 
         return response()->json($permissions);
     }
-
-    // public function store(Request $request): JsonResponse
-    // {
-    //     $validated = $request->validate([
-    //         'name'       => 'required|string|unique:permissions,name',
-    //         'guard_name' => 'nullable|string',
-    //     ]);
-
-    //     $permission = Permission::create([
-    //         'name'       => $validated['name'],
-    //         'guard_name' => $validated['guard_name'] ?? 'api',
-    //     ]);
-
-    //     return response()->json($permission, 201);
-    // }
-
-    // public function destroy(Permission $permission): JsonResponse
-    // {
-    //     $permission->delete();
-
-    //     return response()->json(['message' => 'Permission deleted successfully.']);
-    // }
 }

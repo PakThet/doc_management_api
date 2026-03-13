@@ -17,6 +17,7 @@ class Document extends Model
         'branch_id',
         'document_category_id',
         'document_prefix_id',
+        'group_id',
         'created_by',
         'updated_by',
         'document_code',
@@ -77,6 +78,10 @@ class Document extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(DocumentGroup::class, 'group_id');
+    }
     // ─── Scopes ──────────────────────────────────────────────────────────────────
 
     public function scopeSearch($query, string $search)

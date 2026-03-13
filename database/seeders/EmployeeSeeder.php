@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Branch;
 use App\Models\Department;
 use App\Models\Employee;
+use App\Models\Position;
 use Illuminate\Database\Seeder;
 
 class EmployeeSeeder extends Seeder
@@ -35,7 +36,7 @@ class EmployeeSeeder extends Seeder
             [
                 'first_name'      => 'Alexandra',
                 'last_name'       => 'Chen',
-                'position'        => 'Chief Executive Officer',
+                'position_title'  => 'Chief Executive Officer',
                 'employment_type' => 'full_time',
                 'department_id'   => $dept('EXEC')?->id,
                 'salary'          => 250000.00,
@@ -45,7 +46,7 @@ class EmployeeSeeder extends Seeder
             [
                 'first_name'      => 'Marcus',
                 'last_name'       => 'Rivera',
-                'position'        => 'Chief Operating Officer',
+                'position_title'  => 'Chief Operating Officer',
                 'employment_type' => 'full_time',
                 'department_id'   => $dept('EXEC')?->id,
                 'salary'          => 200000.00,
@@ -56,7 +57,7 @@ class EmployeeSeeder extends Seeder
             [
                 'first_name'      => 'Sophia',
                 'last_name'       => 'Patel',
-                'position'        => 'HR Manager',
+                'position_title'  => 'HR Manager',
                 'employment_type' => 'full_time',
                 'department_id'   => $dept('HR')?->id,
                 'salary'          => 85000.00,
@@ -66,7 +67,7 @@ class EmployeeSeeder extends Seeder
             [
                 'first_name'      => 'James',
                 'last_name'       => 'Nguyen',
-                'position'        => 'HR Specialist',
+                'position_title'  => 'HR Specialist',
                 'employment_type' => 'full_time',
                 'department_id'   => $dept('HR')?->id,
                 'salary'          => 60000.00,
@@ -77,7 +78,7 @@ class EmployeeSeeder extends Seeder
             [
                 'first_name'      => 'Diana',
                 'last_name'       => 'Müller',
-                'position'        => 'Chief Financial Officer',
+                'position_title'  => 'Chief Financial Officer',
                 'employment_type' => 'full_time',
                 'department_id'   => $dept('FIN')?->id,
                 'salary'          => 180000.00,
@@ -87,7 +88,7 @@ class EmployeeSeeder extends Seeder
             [
                 'first_name'      => 'Kevin',
                 'last_name'       => 'O\'Brien',
-                'position'        => 'Senior Accountant',
+                'position_title'  => 'Accountant',
                 'employment_type' => 'full_time',
                 'department_id'   => $dept('FIN')?->id,
                 'salary'          => 75000.00,
@@ -98,7 +99,7 @@ class EmployeeSeeder extends Seeder
             [
                 'first_name'      => 'Nathan',
                 'last_name'       => 'Brooks',
-                'position'        => 'Chief Technology Officer',
+                'position_title'  => 'Chief Technology Officer',
                 'employment_type' => 'full_time',
                 'department_id'   => $dept('IT')?->id,
                 'salary'          => 190000.00,
@@ -108,7 +109,7 @@ class EmployeeSeeder extends Seeder
             [
                 'first_name'      => 'Priya',
                 'last_name'       => 'Sharma',
-                'position'        => 'Lead Software Engineer',
+                'position_title'  => 'Software Engineer',
                 'employment_type' => 'full_time',
                 'department_id'   => $dept('IT')?->id,
                 'salary'          => 120000.00,
@@ -118,7 +119,7 @@ class EmployeeSeeder extends Seeder
             [
                 'first_name'      => 'Carlos',
                 'last_name'       => 'Mendez',
-                'position'        => 'DevOps Engineer',
+                'position_title'  => 'DevOps Engineer',
                 'employment_type' => 'full_time',
                 'department_id'   => $dept('IT')?->id,
                 'salary'          => 110000.00,
@@ -128,7 +129,7 @@ class EmployeeSeeder extends Seeder
             [
                 'first_name'      => 'Aisha',
                 'last_name'       => 'Johnson',
-                'position'        => 'Software Engineer',
+                'position_title'  => 'Software Engineer',
                 'employment_type' => 'full_time',
                 'department_id'   => $dept('IT')?->id,
                 'salary'          => 95000.00,
@@ -139,7 +140,7 @@ class EmployeeSeeder extends Seeder
             [
                 'first_name'      => 'Robert',
                 'last_name'       => 'Kim',
-                'position'        => 'Operations Manager',
+                'position_title'  => 'Operations Manager',
                 'employment_type' => 'full_time',
                 'department_id'   => $dept('OPS')?->id,
                 'salary'          => 90000.00,
@@ -149,7 +150,7 @@ class EmployeeSeeder extends Seeder
             [
                 'first_name'      => 'Fatima',
                 'last_name'       => 'Al-Hassan',
-                'position'        => 'Operations Analyst',
+                'position_title'  => 'Business Analyst',
                 'employment_type' => 'full_time',
                 'department_id'   => $dept('OPS')?->id,
                 'salary'          => 65000.00,
@@ -159,7 +160,7 @@ class EmployeeSeeder extends Seeder
             [
                 'first_name'      => 'Liam',
                 'last_name'       => 'Thompson',
-                'position'        => 'Logistics Coordinator',
+                'position_title'  => 'Project Manager',
                 'employment_type' => 'contract',
                 'department_id'   => $dept('OPS')?->id,
                 'salary'          => 50000.00,
@@ -176,10 +177,17 @@ class EmployeeSeeder extends Seeder
             $employeeCode = "{$branchCode}-EMP-{$paddedCode}";
             $slug = strtolower($branchCode);
 
+            $position = Position::where('position_title', $data['position_title'])
+                ->where('department_id', $data['department_id'])
+                ->first();
+
+            unset($data['position_title']);
+
             Employee::firstOrCreate(
                 ['employee_code' => $employeeCode],
                 array_merge($data, [
                     'branch_id'     => $branch->id,
+                    'position_id'   => $position?->id,
                     'employee_code' => $employeeCode,
                     'email'         => strtolower("{$data['first_name']}.{$data['last_name']}.{$counter}@{$slug}.internal"),
                     'phone'         => '+1' . rand(2000000000, 9999999999),

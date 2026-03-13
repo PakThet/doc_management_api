@@ -34,9 +34,8 @@ class DepartmentController extends Controller
                 AllowedFilter::partial('name'),
             ])
             ->allowedSorts(['name', 'created_at', 'status'])
-            ->allowedIncludes(['branch', 'parent', 'children', 'headOfDepartment', 'employees', 'documentPrefixes']);
+            ->allowedIncludes(['branch', 'parent', 'children', 'headOfDepartment', 'employees',]);
 
-        // Branch scope
         if (! $user->hasRole('super-admin') && $user->branch_id) {
             $query->forBranch($user->branch_id);
         }
@@ -49,20 +48,26 @@ class DepartmentController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
         $validated = $request->validate([
-            'branch_id'              => 'required|exists:branches,id',
-            'name'                   => 'required|string|max:255',
-            'code'                   => 'nullable|string|unique:departments,code',
-            'description'            => 'nullable|string',
-            'parent_id'              => 'nullable|exists:departments,id',
-            'head_of_department_id'  => 'nullable|exists:employees,id',
-            'email'                  => 'nullable|email',
-            'phone'                  => 'nullable|string|max:20',
-            'location'               => 'nullable|string',
-            'budget'                 => 'nullable|numeric|min:0',
-            'status'                 => 'in:active,inactive',
-            'metadata'               => 'nullable|array',
+            'branch_id'             => 'nullable|exists:branches,id',
+            'name'                  => 'required|string|max:255',
+            'code'                  => 'nullable|string|unique:departments,code',
+            'description'           => 'nullable|string',
+            'parent_id'             => 'nullable|exists:departments,id',
+            'head_of_department_id' => 'nullable|exists:employees,id',
+            'email'                 => 'nullable|email',
+            'phone'                 => 'nullable|string|max:20',
+            'location'              => 'nullable|string',
+            'budget'                => 'nullable|numeric|min:0',
+            'status'                => 'in:active,inactive',
         ]);
+
+        if (! $user->hasRole('super-admin')) {
+            $validated['branch_id'] = $user->branch_id;
+        }
 
         $this->authorizeBranchAccess($validated['branch_id']);
 
@@ -77,7 +82,12 @@ class DepartmentController extends Controller
 
         $department->load(['branch', 'parent', 'children', 'headOfDepartment', 'employees']);
 
-        return response()->json($department);
+        $employeeCount = $department->employees->count();
+
+        return response()->json([
+            'employee_count' => $employeeCount,
+            'department' => $department,
+        ]);
     }
 
     public function update(Request $request, Department $department): JsonResponse
@@ -95,7 +105,6 @@ class DepartmentController extends Controller
             'location'               => 'nullable|string',
             'budget'                 => 'nullable|numeric|min:0',
             'status'                 => 'in:active,inactive',
-            'metadata'               => 'nullable|array',
         ]);
 
         $department->update($validated);

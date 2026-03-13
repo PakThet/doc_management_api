@@ -30,6 +30,7 @@ class EmployeeController extends Controller
             ->allowedFilters([
                 AllowedFilter::exact('status'),
                 AllowedFilter::exact('department_id'),
+                AllowedFilter::exact('position_id'),
                 AllowedFilter::exact('employment_type'),
                 AllowedFilter::partial('first_name'),
                 AllowedFilter::partial('last_name'),
@@ -41,6 +42,7 @@ class EmployeeController extends Controller
             ->allowedIncludes([
                 'branch',
                 'department',
+                'position',
                 // 'documents', 
                 // 'achievements'
             ])
@@ -56,6 +58,7 @@ class EmployeeController extends Controller
         $validated = $request->validate([
             'branch_id' => 'required|exists:branches,id',
             'department_id' => 'nullable|exists:departments,id',
+            'position_id' => 'required|exists:positions,id',
             'employee_code' => 'required|string|unique:employees',
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
@@ -114,7 +117,7 @@ class EmployeeController extends Controller
     // Show employee
     public function show(Employee $employee): JsonResponse
     {
-        $employee->load(['documents', 'achievements', 'branch', 'department']);
+        $employee->load(['documents', 'achievements', 'branch', 'department', 'position',]);
         return response()->json($employee);
     }
 
@@ -123,6 +126,7 @@ class EmployeeController extends Controller
     {
         $validated = $request->validate([
             'department_id' => 'nullable|exists:departments,id',
+            'position_id' => 'nullable|exists:positions,id',
             'first_name' => 'sometimes|string|max:255',
             'last_name' => 'sometimes|string|max:255',
             'email' => "sometimes|email|unique:employees,email,{$employee->id}",

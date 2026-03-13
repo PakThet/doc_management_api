@@ -15,7 +15,7 @@ class Branch extends Model
     use HasFactory, SoftDeletes, LogsActivity;
 
     protected $fillable = [
-        'organization_id',
+        'head_of_branch_id',
         'name',
         'address',
         'phone',
@@ -27,11 +27,9 @@ class Branch extends Model
         'postal_code',
         'established_date',
         'status',
-        'settings',
     ];
 
     protected $casts = [
-        'settings'         => 'array',
         'established_date' => 'date',
     ];
 
@@ -41,14 +39,20 @@ class Branch extends Model
             ->logAll()
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
-            ->setDescriptionForEvent(fn(string $eventName) => "Branch [{$this->name}] has been {$eventName}");
+            ->setDescriptionForEvent(
+                fn(string $eventName) => "Branch [{$this->name}] has been {$eventName}"
+            );
     }
 
-    // ─── Relationships ───────────────────────────────────────────────────────────
+    /*
+    |--------------------------------------------------------------------------
+    | Relationships
+    |--------------------------------------------------------------------------
+    */
 
-    public function organization(): BelongsTo
+    public function headOfBranch(): BelongsTo
     {
-        return $this->belongsTo(Organization::class);
+        return $this->belongsTo(Employee::class, 'head_of_branch_id');
     }
 
     public function departments(): HasMany
@@ -71,7 +75,11 @@ class Branch extends Model
         return $this->hasMany(Document::class);
     }
 
-    // ─── Scopes ──────────────────────────────────────────────────────────────────
+    /*
+    |--------------------------------------------------------------------------
+    | Scopes
+    |--------------------------------------------------------------------------
+    */
 
     public function scopeActive($query)
     {
@@ -81,11 +89,6 @@ class Branch extends Model
     public function scopeByCity($query, string $city)
     {
         return $query->where('city', $city);
-    }
-
-    public function scopeByOrganization($query, int $organizationId)
-    {
-        return $query->where('organization_id', $organizationId);
     }
 
     public function scopeForBranch($query, int $branchId)

@@ -7,7 +7,7 @@ use App\Http\Controllers\Api\DocumentCategoryController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\DocumentPrefixController;
 use App\Http\Controllers\Api\EmployeeController;
-use App\Http\Controllers\Api\OrganizationController;
+use App\Http\Controllers\Api\PositionController;
 use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\UserController;
@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\EmployeeDocumentController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AchievementController;
+use App\Http\Controllers\Api\DocumentGroupController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -34,6 +35,19 @@ Route::prefix('auth')->name('auth.')->group(function () {
         [AuthController::class, 'verifyEmail']
     )->middleware('signed')->name('verify-email');
 });
+
+
+Route::prefix('employees/{employee}')->group(function () {
+
+    Route::get('documents', [EmployeeDocumentController::class, 'index']);
+
+    Route::post('documents', [EmployeeDocumentController::class, 'upload']);
+});
+
+Route::get('employee-documents/{id}/download', [EmployeeDocumentController::class, 'download']);
+
+Route::delete('employee-documents/{id}', [EmployeeDocumentController::class, 'destroy']);
+
 
 // ── Protected (requires Sanctum token) ────────────────────────────────────
 Route::prefix('auth')->name('auth.')->middleware(['auth:api'])->group(function () {
@@ -60,12 +74,6 @@ Route::get('documents/verify/{token}', [DocumentController::class, 'verify'])->n
 
 Route::middleware('auth:api')->group(function () {
 
-    // ── Organizations ──────────────────────────────────────────────────────────
-    Route::apiResource('organizations', OrganizationController::class);
-
-    Route::post('organizations/{id}/restore', [OrganizationController::class, 'restore'])
-        ->name('organizations.restore');
-
     // ── Branches ───────────────────────────────────────────────────────────────
     Route::apiResource('branches', BranchController::class);
     Route::post('branches/{id}/restore', [BranchController::class, 'restore'])
@@ -81,16 +89,7 @@ Route::middleware('auth:api')->group(function () {
 
     Route::post('employees/{employee}/restore', [EmployeeController::class, 'restore']);
 
-    Route::prefix('employees/{employee}')->group(function () {
 
-        Route::get('documents', [EmployeeDocumentController::class, 'index']);
-
-        Route::post('documents', [EmployeeDocumentController::class, 'upload']);
-    });
-
-    Route::get('employee-documents/{id}/download', [EmployeeDocumentController::class, 'download']);
-
-    Route::delete('employee-documents/{id}', [EmployeeDocumentController::class, 'destroy']);
 
     // ── Users ──────────────────────────────────────────────────────────────────
     Route::apiResource('users', UserController::class);
@@ -98,11 +97,9 @@ Route::middleware('auth:api')->group(function () {
         ->name('users.restore');
     Route::post('users/{user}/assign-role', [UserController::class, 'assignRole'])
         ->name('users.assign-role');
-    Route::post('users/{user}/sync-permissions', [UserController::class, 'syncPermissions'])
-        ->name('users.sync-permissions');
-    Route::get('available-roles', [UserController::class, 'roles'])
-        ->name('users.roles');
 
+    // ── Document Positions ────────────────────────────────────────────────────
+    Route::apiResource('positions', PositionController::class);
     // ── Document Categories ────────────────────────────────────────────────────
     Route::apiResource('document-categories', DocumentCategoryController::class);
     Route::post('document-categories/{id}/restore', [DocumentCategoryController::class, 'restore'])
@@ -110,18 +107,31 @@ Route::middleware('auth:api')->group(function () {
 
     // ── Document Prefixes ──────────────────────────────────────────────────────
     Route::apiResource('document-prefixes', DocumentPrefixController::class);
-    Route::post('document-prefixes/{id}/restore', [DocumentPrefixController::class, 'restore'])
-        ->name('document-prefixes.restore');
+    Route::get(
+        'document-prefixes/{documentPrefix}/generate',
+        [DocumentPrefixController::class, 'generate']
+    );
+
+    // ── Document Groups ─────────────────────────────────────────────────────────
+    Route::apiResource('document-groups', DocumentGroupController::class);
+    Route::post('document-groups/{group}/restore', [DocumentGroupController::class, 'restore']);
 
     // ── Documents ──────────────────────────────────────────────────────────────
+    // Standard CRUD for documents
     Route::apiResource('documents', DocumentController::class);
-    Route::post('documents/{id}/restore', [DocumentController::class, 'restore'])
-        ->name('documents.restore');
+    Route::post('documents/{document}/restore', [DocumentController::class, 'restore']);
+    Route::post('documents/{document}/move', [DocumentController::class, 'move']); // Move document to another group
+
+    // ── Nested documents inside a group ─────────────────────────────────────────
+    // Automatically assigns group_id from URL
+    Route::prefix('document-groups/{group}')->group(function () {
+        Route::get('documents', [DocumentController::class, 'index'])->name('groups.documents.index'); // List documents in this group
+        Route::post('documents', [DocumentController::class, 'store'])->name('groups.documents.store'); // Create document inside this group
+    });
 
     // ── Roles & Permissions (super-admin only) ─────────────────────────────────
     Route::apiResource('roles', RoleController::class);
     Route::post('roles/{role}/addPermission', [RoleController::class, 'addPermission']);
-    Route::post('roles/{role}/remove-permission', [RoleController::class, 'removePermission']);
     Route::get('roles/{role}/permissions', [RoleController::class, 'permissions']);
     Route::get('roles-permission-matrix', [RoleController::class, 'matrix']);
     Route::apiResource('permissions', PermissionController::class)->only(['index']);
@@ -136,5 +146,5 @@ Route::middleware('auth:api')->group(function () {
     Route::get('activity-logs/{activity}', [ActivityLogController::class, 'show'])
         ->name('activity-logs.show');
     Route::delete('activity-logs/{id}', [ActivityLogController::class, 'destroy'])
-    ->middleware(['auth', 'permission:delete activity-logs']);
+        ->middleware(['auth', 'permission:delete activity-logs']);
 });

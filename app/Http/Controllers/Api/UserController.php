@@ -19,7 +19,7 @@ class UserController extends Controller
         $this->middleware('auth');
         $this->middleware('permission:view users')->only(['index', 'show']);
         $this->middleware('permission:create users')->only(['store']);
-        $this->middleware('permission:edit users')->only(['update', 'assignRole', 'syncPermissions']);
+        $this->middleware('permission:edit users')->only(['update', 'assignRole']);
         $this->middleware('permission:delete users')->only(['destroy']);
     }
 
@@ -60,17 +60,23 @@ class UserController extends Controller
             'bio'         => 'nullable|string',
             'status'      => 'in:active,inactive,suspended',
             'password'    => 'required|string|min:8|confirmed',
-            'role'        => 'nullable|string|exists:roles,name',
+            'role'        => 'required|string|exists:roles,name',
             'image'       => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
         /** @var \App\Models\User $authUser */
         $authUser = Auth::user();
 
-        if (! $authUser->hasRole('super-admin') && isset($validated['branch_id'])) {
-            if ($authUser->branch_id !== $validated['branch_id']) {
-                abort(403, 'Cannot create users for another branch.');
-            }
+        if (! $authUser->hasRole('super-admin')) {
+            $validated['branch_id'] = $authUser->branch_id;
+        }
+        if ($request->role === 'super-admin' && ! $authUser->hasRole('super-admin')) {
+            return response()->json([
+                'message' => 'Only Super Admin can create another Super Admin.'
+            ], 403);
+        }
+        if (isset($validated['branch_id']) && ! $authUser->hasRole('super-admin') && $validated['branch_id'] !== $authUser->branch_id) {
+            abort(403, 'Cannot create users for another branch.');
         }
 
         $validated['password'] = bcrypt($validated['password']);
@@ -105,6 +111,14 @@ class UserController extends Controller
     public function update(Request $request, User $user): JsonResponse
     {
         $this->authorize('update', $user);
+        /** @var \App\Models\User $authUser */
+        $authUser = Auth::user();
+
+        if ($user->hasRole('super-admin') && ! $authUser->hasRole('super-admin')) {
+            return response()->json([
+                'message' => 'You cannot modify a Super Admin.'
+            ], 403);
+        }
 
         $validated = $request->validate([
             'first_name' => 'sometimes|string|max:255',
@@ -130,6 +144,18 @@ class UserController extends Controller
     public function destroy(User $user): JsonResponse
     {
         $this->authorize('delete', $user);
+        /** @var \App\Models\User $authUser */
+        $authUser = Auth::user();
+        if ($authUser->id === $user->id) {
+            return response()->json([
+                'message' => 'You cannot delete your own account.'
+            ], 403);
+        }
+        if ($user->hasRole('super-admin') && ! $authUser->hasRole('super-admin')) {
+            return response()->json([
+                'message' => 'You cannot delete a Super Admin.'
+            ], 403);
+        }
 
         if ($user->image && Storage::disk('public')->exists($user->image)) {
             Storage::disk('public')->delete($user->image);
@@ -156,32 +182,28 @@ class UserController extends Controller
             'role' => 'required|string|exists:roles,name',
         ]);
 
+        /** @var \App\Models\User $authUser */
+        $authUser = Auth::user();
+        $role = $request->role;
+
+        // Only super-admin can assign super-admin role
+        if ($role === 'super-admin' && ! $authUser->hasRole('super-admin')) {
+            return response()->json([
+                'message' => 'Only Super Admin can assign the Super Admin role.'
+            ], 403);
+        }
+
+        if ($authUser->id === $user->id) {
+            return response()->json([
+                'message' => 'You cannot change your own role.'
+            ], 403);
+        }
+
         $user->syncRoles([$request->role]);
 
         return response()->json([
             'message' => "Role [{$request->role}] assigned to user [{$user->full_name}].",
             'roles'   => $user->getRoleNames(),
         ]);
-    }
-
-    public function syncPermissions(Request $request, User $user): JsonResponse
-    {
-        $request->validate([
-            'permissions'   => 'required|array',
-            'permissions.*' => 'string|exists:permissions,name',
-        ]);
-
-        $user->syncPermissions($request->permissions);
-
-        return response()->json([
-            'message'     => "Permissions updated for user [{$user->full_name}].",
-            'permissions' => $user->getAllPermissions()->pluck('name'),
-        ]);
-    }
-
-    public function roles(): JsonResponse
-    {
-        $roles = Role::with('permissions')->get();
-        return response()->json($roles);
     }
 }
