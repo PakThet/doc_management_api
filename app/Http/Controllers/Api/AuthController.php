@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
@@ -14,7 +13,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Validation\ValidationException;
 
-class AuthController extends Controller
+class AuthController extends BaseController
 {
     // ─── Login ────────────────────────────────────────────────────────────────
 
@@ -34,12 +33,14 @@ class AuthController extends Controller
         }
 
         if ($user->status !== 'active') {
-            return response()->json([
-                'message' => 'Your account is ' . $user->status . '. Please contact support.',
-            ], 403);
+            return $this->sendError(
+                'Your account is ' . $user->status . '. Please contact support.',
+                [],
+                403,
+            );
         }
-
-        $user->tokens()->delete();
+        
+        // $user->tokens()->delete();
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -48,12 +49,10 @@ class AuthController extends Controller
             ->withProperties(['ip' => $request->ip(), 'user_agent' => $request->userAgent()])
             ->log('User logged in');
 
-        return response()->json([
-            'message'      => 'Login successful.',
+        return $this->sendResponse([
             'access_token' => $token,
-            'token_type'   => 'Bearer',
-            'user'         => $this->userPayload($user),
-        ]);
+            'user'         => $user,
+        ], 'Login successful.');
     }
 
     // ─── Logout ───────────────────────────────────────────────────────────────
@@ -70,7 +69,7 @@ class AuthController extends Controller
 
         $request->user()->currentAccessToken()->delete();
 
-        return response()->json(['message' => 'Logged out successfully.']);
+        return $this->sendResponse(null, 'Logged out successfully.');
     }
 
     // ─── Authenticated user ───────────────────────────────────────────────────
@@ -78,10 +77,42 @@ class AuthController extends Controller
     public function me(Request $request): JsonResponse
     {
         /** @var \App\Models\User $user */
-        $user = $request->user()->load(['branch', 'roles', 'permissions']);
+        $user = $request->user()->load(['branch', 'roles']);
 
-        return response()->json($this->userPayload($user));
+        return $this->sendResponse(['user' => $user], 'Me fetching successfully');
     }
+
+    // ─── Update profile ───────────────────────────────────────────────────────
+
+    public function updateProfile(Request $request): JsonResponse
+    {
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'first_name' => 'sometimes|string|max:255',
+            'last_name'  => 'sometimes|string|max:255',
+            'phone'      => "nullable|string|unique:users,phone,{$user->id}",
+            'bio'        => 'nullable|string',
+            'image'      => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+        ]);
+
+        if ($request->hasFile('image')) {
+            if ($user->image && Storage::disk('public')->exists($user->image)) {
+                Storage::disk('public')->delete($user->image);
+            }
+            $validated['image'] = $request->file('image')->store('users', 'public');
+        }
+
+        $user->update($validated);
+        $user->refresh();
+
+        activity()->causedBy($user)->log('User updated profile');
+        
+        return $this->sendResponse(['user' => $user], 'Profile updated successfully.');
+    }
+
+    // ─── Change password ──────────────────────────────────────────────────────
 
     public function changePassword(Request $request): JsonResponse
     {
@@ -108,8 +139,10 @@ class AuthController extends Controller
 
         activity()->causedBy($user)->log('User changed password');
 
-        return response()->json(['message' => 'Password changed successfully. Please log in again.']);
+        return $this->sendResponse(null, 'Password changed successfully. Please log in again.');
     }
+
+    // ─── Forgot password ──────────────────────────────────────────────────────
 
     public function forgotPassword(Request $request): JsonResponse
     {
@@ -118,10 +151,10 @@ class AuthController extends Controller
         $status = Password::sendResetLink($request->only('email'));
 
         if ($status !== Password::RESET_LINK_SENT) {
-            return response()->json(['message' => __($status)], 400);
+            return $this->sendError(__($status), [], 400);
         }
 
-        return response()->json(['message' => 'Password reset link sent to your email.']);
+        return $this->sendResponse(null, 'Password reset link sent to your email.');
     }
 
     // ─── Reset password ───────────────────────────────────────────────────────
@@ -152,10 +185,10 @@ class AuthController extends Controller
         );
 
         if ($status !== Password::PASSWORD_RESET) {
-            return response()->json(['message' => __($status)], 400);
+            return $this->sendError(__($status), [], 400);
         }
 
-        return response()->json(['message' => 'Password has been reset successfully. Please log in.']);
+        return $this->sendResponse(null, 'Password has been reset successfully. Please log in.');
     }
 
     // ─── Email verification ───────────────────────────────────────────────────
@@ -165,18 +198,18 @@ class AuthController extends Controller
         $user = User::findOrFail($id);
 
         if (! hash_equals(sha1($user->getEmailForVerification()), $hash)) {
-            return response()->json(['message' => 'Invalid verification link.'], 400);
+            return $this->sendError('Invalid verification link.', [], 400);
         }
 
         if ($user->hasVerifiedEmail()) {
-            return response()->json(['message' => 'Email already verified.']);
+            return $this->sendResponse(null, 'Email already verified.');
         }
 
         $user->markEmailAsVerified();
 
         activity()->causedBy($user)->log('User verified email');
 
-        return response()->json(['message' => 'Email verified successfully.']);
+        return $this->sendResponse(null, 'Email verified successfully.');
     }
 
     public function resendVerification(Request $request): JsonResponse
@@ -185,46 +218,12 @@ class AuthController extends Controller
         $user = $request->user();
 
         if ($user->hasVerifiedEmail()) {
-            return response()->json(['message' => 'Email is already verified.'], 400);
+            return $this->sendError('Email is already verified.', [], 400);
         }
 
         $user->sendEmailVerificationNotification();
 
-        return response()->json(['message' => 'Verification email resent.']);
-    }
-
-    // ─── Update profile ───────────────────────────────────────────────────────
-
-    public function updateProfile(Request $request): JsonResponse
-    {
-        /** @var \App\Models\User $user */
-        $user = $request->user();
-
-        $validated = $request->validate([
-            'first_name' => 'sometimes|string|max:255',
-            'last_name'  => 'sometimes|string|max:255',
-            'phone'      => "nullable|string|unique:users,phone,{$user->id}",
-            'bio'        => 'nullable|string',
-            'image'      => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
-        ]);
-
-        if ($request->hasFile('image')) {
-            // Delete old image from disk before storing the new one
-            if ($user->image && Storage::disk('public')->exists($user->image)) {
-                Storage::disk('public')->delete($user->image);
-            }
-
-            $validated['image'] = $request->file('image')->store('users', 'public');
-        }
-
-        $user->update($validated);
-
-        activity()->causedBy($user)->log('User updated profile');
-
-        return response()->json([
-            'message' => 'Profile updated successfully.',
-            'user'    => $this->userPayload($user->fresh(['branch', 'roles', 'permissions'])),
-        ]);
+        return $this->sendResponse(null, 'Verification email resent.');
     }
 
     // ─── Two-Factor toggle ────────────────────────────────────────────────────
@@ -240,34 +239,9 @@ class AuthController extends Controller
 
         activity()->causedBy($user)->log("User {$state} two-factor authentication");
 
-        return response()->json([
-            'message'            => "Two-factor authentication {$state}.",
-            'two_factor_enabled' => $user->two_factor_enabled,
-        ]);
-    }
-
-    private function userPayload(User $user): array
-    {
-        return [
-            'id'                  => $user->id,
-            'first_name'          => $user->first_name,
-            'last_name'           => $user->last_name,
-            'full_name'           => $user->full_name,
-            'email'               => $user->email,
-            'phone'               => $user->phone,
-            'image'     => $user->image
-                ? asset('storage/' . $user->image)
-                : null,
-            'bio'                 => $user->bio,
-            'status'              => $user->status,
-            'branch_id'           => $user->branch_id,
-            'branch'              => $user->relationLoaded('branch') ? $user->branch : null,
-            'two_factor_enabled'  => $user->two_factor_enabled,
-            'email_verified_at'   => $user->email_verified_at,
-            'password_changed_at' => $user->password_changed_at,
-            'roles'               => $user->relationLoaded('roles') ? $user->getRoleNames() : [],
-            'permissions'         => $user->relationLoaded('permissions') ? $user->getAllPermissions()->pluck('name') : [],
-            'created_at'          => $user->created_at,
-        ];
+        return $this->sendResponse(
+            ['two_factor_enabled' => $user->two_factor_enabled],
+            "Two-factor authentication {$state}.",
+        );
     }
 }

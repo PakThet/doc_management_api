@@ -11,6 +11,7 @@ use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Permission\Traits\HasRoles;
 use Laravel\Sanctum\HasApiTokens;
+
 class User extends Authenticatable
 {
     use HasFactory, Notifiable, SoftDeletes, HasRoles, LogsActivity, HasApiTokens;
@@ -58,6 +59,11 @@ class User extends Authenticatable
         return "{$this->first_name} {$this->last_name}";
     }
 
+    public function getImageAttribute($value)
+    {
+        return $value ? asset('storage/' . $value) : null;
+    }
+
     // ─── Relationships ───────────────────────────────────────────────────────────
 
     public function branch(): BelongsTo
@@ -71,8 +77,8 @@ class User extends Authenticatable
     {
         return $query->where(function ($q) use ($search) {
             $q->where('first_name', 'like', "%{$search}%")
-              ->orWhere('last_name', 'like', "%{$search}%")
-              ->orWhere('email', 'like', "%{$search}%");
+                ->orWhere('last_name', 'like', "%{$search}%")
+                ->orWhere('email', 'like', "%{$search}%");
         });
     }
 }

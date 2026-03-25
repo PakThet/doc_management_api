@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EmployeeDocument extends Model
 {
@@ -13,14 +14,27 @@ class EmployeeDocument extends Model
         'file_size',
         'mime_type',
         'file_path',
-        'expiry_date'
+        'expiry_date',
     ];
 
     protected $casts = [
-        'expiry_date' => 'date'
+        'expiry_date' => 'date',
+        'file_size'   => 'integer',
     ];
 
-    public function employee()
+    // Append file_url so it appears in all JSON responses
+    protected $appends = ['file_url'];
+
+    // ─── Accessors ───────────────────────────────────────────────────────────────
+
+    public function getFileUrlAttribute(): string
+    {
+        return asset('storage/' . $this->file_path);
+    }
+
+    // ─── Relationships ───────────────────────────────────────────────────────────
+
+    public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class);
     }

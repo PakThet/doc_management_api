@@ -37,16 +37,25 @@ Route::prefix('auth')->name('auth.')->group(function () {
 });
 
 
-Route::prefix('employees/{employee}')->group(function () {
-
-    Route::get('documents', [EmployeeDocumentController::class, 'index']);
-
-    Route::post('documents', [EmployeeDocumentController::class, 'upload']);
+Route::prefix('employees')->group(function () {
+ 
+    // ─── Employee CRUD ────────────────────────────────────────────────────────
+    Route::get('/',                         [EmployeeController::class, 'index']);
+    Route::post('/',                        [EmployeeController::class, 'store']);
+    Route::get('/{employee}',               [EmployeeController::class, 'show']);
+    Route::post('/{employee}',              [EmployeeController::class, 'update']);
+    Route::delete('/{employee}',            [EmployeeController::class, 'destroy']);
+ 
+    // ─── Toggle Status ────────────────────────────────────────────────────────
+    Route::patch('/{employee}/status',      [EmployeeController::class, 'toggleStatus']);
+ 
+    // ─── Employee Documents ───────────────────────────────────────────────────
+    Route::get('/{employeeId}/documents',           [EmployeeDocumentController::class, 'index']);
+    Route::post('/{employeeId}/documents',          [EmployeeDocumentController::class, 'upload']);
+    Route::get('/documents/{id}',                   [EmployeeDocumentController::class, 'show']);
+    Route::get('/documents/{id}/download',          [EmployeeDocumentController::class, 'download']);
+    Route::delete('/documents/{id}',                [EmployeeDocumentController::class, 'destroy']);
 });
-
-Route::get('employee-documents/{id}/download', [EmployeeDocumentController::class, 'download']);
-
-Route::delete('employee-documents/{id}', [EmployeeDocumentController::class, 'destroy']);
 
 
 // ── Protected (requires Sanctum token) ────────────────────────────────────
@@ -78,6 +87,7 @@ Route::middleware('auth:api')->group(function () {
     Route::apiResource('branches', BranchController::class);
     Route::post('branches/{id}/restore', [BranchController::class, 'restore'])
         ->name('branches.restore');
+    Route::patch('branches/{branch}/status', [BranchController::class, 'toggleStatus']);
 
     // ── Departments ────────────────────────────────────────────────────────────
     Route::apiResource('departments', DepartmentController::class);
@@ -135,7 +145,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('roles/{role}/permissions', [RoleController::class, 'permissions']);
     Route::get('roles-permission-matrix', [RoleController::class, 'matrix']);
     Route::apiResource('permissions', PermissionController::class)->only(['index']);
-
+    Route::get('available-roles', [RoleController::class, 'availableRoles']);
     // ── Achievement ──────────────────────────────────────────────────────────
     Route::apiResource('achievements', AchievementController::class);
     // ── Activity Logs ──────────────────────────────────────────────────────────

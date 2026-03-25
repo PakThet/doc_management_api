@@ -25,21 +25,4 @@ class BaseController extends Controller
             'errors' => $errors,
         ], $code);
     }
-
-    protected function sendPaginated(LengthAwarePaginator $paginator, mixed $data, ?string $message = null): JsonResponse
-    {
-        return response()->json([
-            'success' => true,
-            'message' => $message,
-            'data' => $data,
-            'meta' => [
-                'current_page' => $paginator->currentPage(),
-                'last_page' => $paginator->lastPage(),
-                'per_page' => $paginator->perPage(),
-                'total' => $paginator->total(),
-                'from' => $paginator->firstItem(),
-                'to' => $paginator->lastItem(),
-            ],
-        ]);
-    }
 }

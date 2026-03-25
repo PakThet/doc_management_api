@@ -72,10 +72,12 @@ class Employee extends Model
     }
 
     // ─── Relationships ───────────────────────────────────────────────────────────
-    public function achievements()
+
+    public function achievements(): HasMany
     {
         return $this->hasMany(Achievement::class);
     }
+
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
@@ -91,12 +93,12 @@ class Employee extends Model
         return $this->hasMany(Department::class, 'head_of_department_id');
     }
 
-    public function position()
+    public function position(): BelongsTo
     {
         return $this->belongsTo(Position::class);
     }
 
-    public function documents()
+    public function documents(): HasMany
     {
         return $this->hasMany(EmployeeDocument::class);
     }

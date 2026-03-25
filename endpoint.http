@@ -1,7 +1,7 @@
 @baseUrl = http://localhost:8000/api
-@TokenSuperAdmin = 1|2RZZ62bjijJa1XjnsYMGCAJ1VDRhIfFQGAOELaXl8404379d
+@TokenSuperAdmin = 2|rhTW1tihnmsltDQ7DTVIA04rxBBUcleBxoJm9lz22151d5ca
 @TokenAdmin = 4|TsyNttYyU4nREq6v2NkpO0giF2uRAEMZHfp5GKYk765f207c
-@tokenStaff = 1|UKZVEWw1MQ5KqF3rtNj1rYqf3K25CPjVhdrYCpKr06531532
+@tokenStaff = 9|2VXG8DTX0WNd4NLwohyi6jQnEJ1RDWBfgrxFnjnh72129c5f
 @tokenDocVerify = f92967a6-8fb8-4801-8a7b-7958bba4f53b
 
 ### Public Routes
@@ -130,7 +130,7 @@ Authorization: Bearer {{TokenSuperAdmin}}
 Accept: application/json
 
 ### Branches
-GET {{baseUrl}}/branches/5
+GET {{baseUrl}}/branches
 Authorization: Bearer {{TokenSuperAdmin}}
 Accept: application/json
 
@@ -168,7 +168,7 @@ Authorization: Bearer {{TokenSuperAdmin}}
 Accept: application/json
 
 ### Departments
-GET {{baseUrl}}/departments/4
+GET {{baseUrl}}/departments/1
 Authorization: Bearer {{TokenSuperAdmin}}
 Accept: application/json
 
@@ -185,13 +185,13 @@ Content-Type: application/json
 }
 
 ### Update Department
-PUT {{baseUrl}}/departments/1
+PUT {{baseUrl}}/departments/3
 Authorization: Bearer {{TokenSuperAdmin}}
 Accept: application/json
 Content-Type: application/json
 
 {
-    "name": "Updated Department"
+    "head_of_department_id": 2
 }
 
 ### Delete Department
@@ -205,7 +205,7 @@ Authorization: Bearer {{TokenSuperAdmin}}
 Accept: application/json
 
 ### Positions
-GET {{baseUrl}}/positions
+GET {{baseUrl}}/positions/1
 Authorization: Bearer {{TokenSuperAdmin}}
 Accept: application/json
 
@@ -302,12 +302,12 @@ Authorization: Bearer {{TokenAdmin}}
 Accept: application/pdf
 
 ### Delete Employee Document
-DELETE {{baseUrl}}/employee-documents/1
+DELETE {{baseUrl}}/employee-documents/3
 Authorization: Bearer {{TokenSuperAdmin}}
 Accept: application/json
 
 ### Users
-GET {{baseUrl}}/users
+GET {{baseUrl}}/users/
 Authorization: Bearer {{TokenSuperAdmin}}
 Accept: application/json
 
@@ -332,7 +332,7 @@ Accept: application/json
 Content-Type: application/json
 
 {
-    "first_name": "Updated"
+    "first_name": "Super"
 }
 
 ### Delete User
@@ -430,7 +430,7 @@ Accept: application/json
 
 ### Document Prefixes
 GET {{baseUrl}}/document-prefixes
-Authorization: Bearer {{TokenAdmin}}
+Authorization: Bearer {{TokenSuperAdmin}}
 Accept: application/json
 
 ### Create Document Prefix
@@ -538,7 +538,7 @@ Content-Type: application/json
 
 ### Roles
 GET {{baseUrl}}/roles
-Authorization: Bearer {{TokenAdmin}}
+Authorization: Bearer {{TokenSuperAdmin}}
 Accept: application/json
 
 ### Create Role
@@ -583,17 +583,17 @@ Accept: application/json
 
 ### Roles Permission Matrix
 GET {{baseUrl}}/roles-permission-matrix
-Authorization: Bearer {{TokenAdmin}}
+Authorization: Bearer {{TokenSuperAdmin}}
 Accept: application/json
 
 ### Permissions
 GET {{baseUrl}}/permissions
-Authorization: Bearer {{TokenAdmin}}
+Authorization: Bearer {{TokenSuperAdmin}}
 Accept: application/json
 
 ### Achievements
 GET {{baseUrl}}/achievements
-Authorization: Bearer {{TokenAdmin}}
+Authorization: Bearer {{TokenSuperAdmin}}
 Accept: application/json
 
 ### Create Achievement
@@ -648,7 +648,7 @@ Accept: application/json
 # Branches
 
 #################################
-GET {{baseUrl}}/branches/2
+GET {{baseUrl}}/branches?per_page=2
 Accept: application/json
 Authorization: Bearer {{TokenSuperAdmin}}
 
@@ -761,7 +761,7 @@ Accept: application/json
 
 #################################
 GET {{baseUrl}}/employees
-Authorization: Bearer {{TokenSuperAdmin}}
+Authorization: Bearer {{TokenAdmin}}
 Accept: application/json
 
 ###
@@ -798,7 +798,7 @@ Accept: application/json
 }
 
 ###
-GET {{baseUrl}}/employees/14
+GET {{baseUrl}}/employees?include=branch,department,position
 Accept: application/json
 Authorization: Bearer {{TokenSuperAdmin}}
 

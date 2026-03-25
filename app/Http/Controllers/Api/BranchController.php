@@ -15,7 +15,7 @@ class BranchController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('permission:view branches')->only(['index','show']);
+        $this->middleware('permission:view branches')->only(['index', 'show']);
         $this->middleware('permission:create branches')->only(['store']);
         $this->middleware('permission:edit branches')->only(['update']);
         $this->middleware('permission:delete branches')->only(['destroy']);
@@ -54,7 +54,7 @@ class BranchController extends Controller
         }
 
         $branches = $query
-            ->paginate(request()->integer('per_page',15))
+            ->paginate(request()->integer('per_page', 15))
             ->appends(request()->query());
 
         return response()->json($branches);
@@ -79,7 +79,7 @@ class BranchController extends Controller
 
         $branch = Branch::create($validated);
 
-        return response()->json($branch,201);
+        return response()->json($branch, 201);
     }
 
     public function show(Branch $branch): JsonResponse
@@ -149,13 +149,29 @@ class BranchController extends Controller
         ]);
     }
 
+    public function toggleStatus(Request $request, Branch $branch)
+    {
+        $request->validate([
+            'status' => 'required|in:active,inactive',
+        ]);
+
+        $branch->status = $request->status;
+        $branch->save();
+
+        return response()->json([
+            'data' => $branch,
+            'message' => 'Branch status updated successfully'
+        ]);
+    }
+
+
     private function authorizeBranchAccess(Branch $branch): void
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
         if (! $user->hasRole('super-admin') && $user->branch_id !== $branch->id) {
-            abort(403,'Access denied to this branch.');
+            abort(403, 'Access denied to this branch.');
         }
     }
 }

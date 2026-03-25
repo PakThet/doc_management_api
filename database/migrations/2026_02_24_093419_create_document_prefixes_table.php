@@ -15,6 +15,7 @@ return new class extends Migration
             $table->string('separator', 5)->default('-');
             $table->string('format');
             $table->integer('current_sequence')->default(0);
+            $table->timestamp('last_reset_at')->nullable();
             $table->string('reset_period')->default('year');
             $table->text('description')->nullable();
             $table->enum('status', ['active', 'inactive'])->default('active');
