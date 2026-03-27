@@ -34,22 +34,17 @@ class BaseController extends Controller
     }
 
     /**
-     * Paginated response method
+     * Send paginated response
      */
-    protected function sendPaginated($data, string $message = null): JsonResponse
+    public function sendPaginated($resourceCollection, $message): JsonResponse
     {
+        $paginatedResponse = $resourceCollection->response()->getData(true);
+
         return response()->json([
             'success' => true,
             'message' => $message,
-            'data' => $data->items(),
-            'meta' => [
-                'current_page' => $data->currentPage(),
-                'last_page' => $data->lastPage(),
-                'per_page' => $data->perPage(),
-                'total' => $data->total(),
-                'from' => $data->firstItem(),
-                'to' => $data->lastItem()
-            ]
+            'data'    => $paginatedResponse['data'],
+            'meta'    => $paginatedResponse['meta']
         ]);
     }
 

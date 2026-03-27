@@ -56,7 +56,7 @@ class EmployeeController extends BaseController
     public function store(EmployeeRequest $request)
     {
         $data = $request->validated();
-        $data['organization_id'] = $this->getOrganizationId();
+        if (!isset($data['organization_id'])) { $data['organization_id'] = $this->getOrganizationId(); }
 
         $employee = Employee::create($data);
 
@@ -184,3 +184,4 @@ class EmployeeController extends BaseController
         return $this->sendResponse($stats, 'Employee statistics retrieved successfully');
     }
 }
+

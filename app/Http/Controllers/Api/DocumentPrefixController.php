@@ -40,7 +40,7 @@ class DocumentPrefixController extends BaseController
     public function store(DocumentPrefixRequest $request)
     {
         $data = $request->validated();
-        $data['organization_id'] = $this->getOrganizationId();
+        if (!isset($data['organization_id'])) { $data['organization_id'] = $this->getOrganizationId() ?: 1; }
 
         // If this is set as default, unset other defaults
         if (isset($data['is_default']) && $data['is_default']) {

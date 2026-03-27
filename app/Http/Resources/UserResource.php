@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\RoleResource;
 
 class UserResource extends JsonResource
 {
@@ -24,7 +25,7 @@ class UserResource extends JsonResource
             'two_factor_enabled' => $this->two_factor_enabled,
             'status' => $this->status,
             'roles' => $this->whenLoaded('roles', function () {
-                return $this->roles->pluck('name');
+                return RoleResource::collection($this->roles);
             }),
             'permissions' => $this->whenLoaded('permissions', function () {
                 return $this->getAllPermissions()->pluck('name');

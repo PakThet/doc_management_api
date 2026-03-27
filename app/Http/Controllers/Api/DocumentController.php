@@ -74,6 +74,12 @@ class DocumentController extends BaseController
     {
         $data = $request->validated();
         $data['organization_id'] = $this->getOrganizationId();
+        if (empty($data['organization_id']) && isset($data['branch_id'])) {
+            $branch = \App\Models\Branch::find($data['branch_id']);
+            if ($branch) {
+                $data['organization_id'] = $branch->organization_id;
+            }
+        }
         $data['created_by'] = Auth::id();
         $data['verification_token'] = Str::random(64);
         $data['qr_token'] = Str::random(32);
@@ -114,8 +120,8 @@ class DocumentController extends BaseController
         }
 
         // Generate QR code
-        $qrCodePath = 'qrcodes/' . $data['qr_token'] . '.png';
-        $qrCode = QrCode::format('png')
+        $qrCodePath = 'qrcodes/' . $data['qr_token'] . '.svg';
+        $qrCode = QrCode::format('svg')
             ->size(200)
             ->generate(route('documents.verify', $data['qr_token']));
         Storage::disk('public')->put($qrCodePath, $qrCode);
@@ -290,3 +296,4 @@ class DocumentController extends BaseController
         return $this->sendResponse($stats, 'Document statistics retrieved successfully');
     }
 }
+

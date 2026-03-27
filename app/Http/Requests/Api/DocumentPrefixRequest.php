@@ -19,6 +19,7 @@ class DocumentPrefixRequest extends FormRequest
         $organizationId = Auth::user()->organization_id;
 
         return [
+            'organization_id' => 'nullable|integer',
             'name' => 'required|string|max:255',
             'prefix' => [
                 'required',

@@ -136,6 +136,34 @@ class AuthController extends BaseController
      * @param Request $request
      * @return JsonResponse
      */
+    
+    /**
+     * Update user avatar
+     */
+    public function updateAvatar(\Illuminate\Http\Request $request)
+    {
+        $request->validate([
+            'avatar' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+        ]);
+
+        $user = $request->user();
+
+        if ($request->hasFile('avatar')) {
+            // Delete old avatar if exists
+            if ($user->image) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($user->image);
+            }
+
+            $path = $request->file('avatar')->store('avatars', 'public');
+            $user->image = $path;
+            $user->save();
+
+            return $this->sendResponse(new \App\Http\Resources\UserResource($user), 'Avatar updated successfully');
+        }
+
+        return $this->sendError('Failed to upload avatar', [], 400);
+    }
+
     public function forgotPassword(Request $request)
     {
         $request->validate(['email' => 'required|email']);
@@ -181,3 +209,4 @@ class AuthController extends BaseController
         return $this->sendError('Unable to reset password', ['email' => __($status)], 400);
     }
 }
+

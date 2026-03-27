@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Models\User;
 use App\Http\Requests\Api\UserRequest;
 use App\Http\Resources\UserResource;
+use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Carbon;
@@ -15,30 +16,47 @@ class UserController extends BaseController
      * List Users
      */
     public function index(Request $request)
-{
-    $users = User::with(['organization', 'employee'])
-        ->when($request->search, function ($query, $search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                    ->orWhere('last_name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhere('phone', 'like', "%{$search}%");
-            });
-        })
-        ->when($request->status, function ($query, $status) {
-            $query->where('status', $status);
-        })
-        ->when($request->role, function ($query, $role) {
-            $query->role($role);
-        })
-        ->orderBy($request->sort_by ?? 'created_at', $request->sort_direction ?? 'desc')
-        ->paginate($request->per_page ?? 15);
+    {
+        $query = User::query();
 
-    return $this->sendPaginated(
-        UserResource::collection($users),
-        'Users retrieved successfully'
-    );
-}
+        // If filtering by a role, check if it's a global role
+        if ($request->role) {
+            $roleToFilter = Role::find($request->role);
+            
+            // If the role exists and is global, temporarily remove the organization scope
+            if ($roleToFilter && is_null($roleToFilter->organization_id)) {
+                $query->withoutGlobalScope(\App\Traits\HasOrganizationScope::class);
+            }
+        }
+
+        $users = $query->with(['organization', 'employee', 'roles', 'permissions'])
+            ->when($request->search, function ($query, $search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%");
+                });
+            })
+            ->when($request->status, function ($query, $status) {
+                $query->where('status', $status);
+            })
+            ->when($request->role, function ($query, $roleId) {
+                $role = \App\Models\Role::find($roleId);
+                if ($role) {
+                    $query->role($role);
+                } else {
+                    $query->role($roleId);
+                }
+            })
+            ->orderBy($request->sort_by ?? 'created_at', $request->sort_direction ?? 'desc')
+            ->paginate($request->per_page ?? 15);
+
+        return $this->sendPaginated(
+            UserResource::collection($users),
+            'Users retrieved successfully'
+        );
+    }
 
     /**
      * Create User
@@ -148,3 +166,4 @@ class UserController extends BaseController
         );
     }
 }
+

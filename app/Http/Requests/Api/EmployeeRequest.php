@@ -19,6 +19,7 @@ class EmployeeRequest extends FormRequest
         $organizationId = Auth::user()->organization_id;
 
         return [
+            'organization_id' => 'nullable|integer',
             'user_id' => 'nullable|exists:users,id',
             'branch_id' => 'required|exists:branches,id',
             'department_id' => 'nullable|exists:departments,id',

@@ -7,6 +7,7 @@ use App\Models\Permission;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Resources\RoleResource;
 
 class RoleController extends BaseController
 {
@@ -17,12 +18,25 @@ class RoleController extends BaseController
     */
     public function index(Request $request): JsonResponse
     {
-        $roles = Role::where('organization_id', Auth::user()->organization_id)
-            ->with('permissions')
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        $organizationId = $user->organization_id;
+
+        $roles = Role::query()
+            // If the user is a super admin, show all roles.
+            // Otherwise, show global roles and roles for their organization.
+            ->when(!$user->isSuperAdmin(), function ($query) use ($organizationId) {
+                $query->where(function ($subQuery) use ($organizationId) {
+                    $subQuery->whereNull('organization_id')
+                        ->orWhere('organization_id', $organizationId);
+                });
+            })
+            ->with(['permissions', 'users'])
+            ->withCount(['permissions', 'users'])
             ->orderBy('name')
             ->paginate($request->per_page ?? 15);
 
-        return $this->sendPaginated($roles, 'Roles retrieved successfully');
+        return $this->sendPaginated(RoleResource::collection($roles), 'Roles retrieved successfully');
     }
 
     /*
@@ -127,3 +141,5 @@ class RoleController extends BaseController
         return $this->sendResponse($role->load('permissions'), 'Permissions assigned successfully');
     }
 }
+
+

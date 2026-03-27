@@ -4,6 +4,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\PermissionResource;
 use Spatie\Permission\Models\Permission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,16 +16,29 @@ class PermissionController extends BaseController
      */
     public function index(Request $request)
     {
-        $permissions = Permission::when($request->search, function ($query, $search) {
+        $organizationId = Auth::user()->organization_id;
+        
+        $permissionsQuery = Permission::query()
+            ->when($request->search, function ($query, $search) {
                 $query->where('name', 'like', "%{$search}%");
             })
             ->when($request->group, function ($query, $group) {
                 $query->where('name', 'like', "{$group}%");
             })
-            ->orderBy($request->sort_by ?? 'name', $request->sort_direction ?? 'asc')
-            ->paginate($request->per_page ?? 15);
+            ->where(function ($query) use ($organizationId) {
+                $query->whereNull('organization_id')
+                    ->orWhere('organization_id', $organizationId);
+            })
+            ->withCount('roles')
+            ->orderBy($request->sort_by ?? 'name', $request->sort_direction ?? 'asc');
 
-        return $this->sendPaginated($permissions, 'Permissions retrieved successfully');
+        if ($request->query('all')) {
+            $permissions = $permissionsQuery->get();
+            return $this->sendResponse(PermissionResource::collection($permissions), 'All permissions retrieved successfully');
+        }
+
+        $permissions = $permissionsQuery->paginate($request->per_page ?? 15);
+        return $this->sendPaginated(PermissionResource::collection($permissions), 'Permissions retrieved successfully');
     }
 
     public function getPermissions($userId)

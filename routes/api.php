@@ -24,7 +24,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
-Route::get('/documents/verify/{token}', [DocumentController::class, 'verify']);
+Route::get('/documents/verify/{token}', [DocumentController::class, 'verify'])->name('documents.verify');
 
 /*
 |--------------------------------------------------------------------------
@@ -42,6 +42,7 @@ Route::middleware(['auth:api'])->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
+    Route::post('/me/avatar', [AuthController::class, 'updateAvatar']);
 
     /*
     |--------------------------------------------------------------------------
@@ -121,11 +122,7 @@ Route::middleware(['auth:api'])->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    Route::middleware('permission:view documents')->get('/document-prefixes', [DocumentPrefixController::class, 'index']);
-    Route::middleware('permission:create documents')->post('/document-prefixes', [DocumentPrefixController::class, 'store']);
-    Route::middleware('permission:view documents')->get('/document-prefixes/{documentPrefix}', [DocumentPrefixController::class, 'show']);
-    Route::middleware('permission:edit documents')->put('/document-prefixes/{documentPrefix}', [DocumentPrefixController::class, 'update']);
-    Route::middleware('permission:delete documents')->delete('/document-prefixes/{documentPrefix}', [DocumentPrefixController::class, 'destroy']);
+    Route::apiResource('document-prefixes', DocumentPrefixController::class);
 
     /*
     |--------------------------------------------------------------------------
@@ -133,30 +130,24 @@ Route::middleware(['auth:api'])->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    Route::middleware('permission:view documents')->get('/documents', [DocumentController::class, 'index']);
-    Route::middleware('permission:create documents')->post('/documents', [DocumentController::class, 'store']);
-    Route::middleware('permission:view documents')->get('/documents/{document}', [DocumentController::class, 'show']);
-    Route::middleware('permission:edit documents')->put('/documents/{document}', [DocumentController::class, 'update']);
-    Route::middleware('permission:delete documents')->delete('/documents/{document}', [DocumentController::class, 'destroy']);
-
-    Route::middleware('permission:verify documents')->post('/documents/{document}/publish', [DocumentController::class, 'publish']);
+    Route::apiResource('documents', DocumentController::class);
+    Route::post('/documents/{document}/publish', [DocumentController::class, 'publish']);
+    Route::get('/documents/{document}/download', [DocumentController::class, 'download']);
 
     /*
     |--------------------------------------------------------------------------
     | Roles & Permissions
     |--------------------------------------------------------------------------
     */
-
+    
     Route::middleware('permission:view roles')->get('/roles', [RoleController::class, 'index']);
     Route::middleware('permission:create roles')->post('/roles', [RoleController::class, 'store']);
+    Route::middleware('permission:view roles')->get('/roles/{role}', [RoleController::class, 'show']);
     Route::middleware('permission:edit roles')->put('/roles/{role}', [RoleController::class, 'update']);
     Route::middleware('permission:delete roles')->delete('/roles/{role}', [RoleController::class, 'destroy']);
+    Route::middleware('permission:assign permissions')->post('/roles/{role}/permissions', [RoleController::class, 'assignPermissions']);
 
-    Route::middleware('permission:assign permissions')
-        ->post('/roles/{role}/permissions', [RoleController::class, 'assignPermissions']);
-
-    Route::middleware('permission:view permissions')
-        ->get('/permissions', [PermissionController::class, 'index']);
-    Route::middleware('permission:view permissions')
-        ->get('/users/{user}/permissions', [PermissionController::class, 'getPermissions']);
+    Route::get('permissions', [PermissionController::class, 'index']);
+    Route::get('users/{user}/permissions', [PermissionController::class, 'getPermissions']);
 });
+
