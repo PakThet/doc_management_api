@@ -88,7 +88,7 @@ class DocumentController extends BaseController
         if (isset($data['document_prefix_id'])) {
             $prefix = DocumentPrefix::find($data['document_prefix_id']);
             if ($prefix) {
-                $lastDocument = Document::where('document_prefix_id', $prefix->id)
+                $lastDocument = Document::withTrashed()->where('document_prefix_id', $prefix->id)
                     ->whereYear('created_at', now()->year)
                     ->orderBy('id', 'desc')
                     ->first();
@@ -296,4 +296,5 @@ class DocumentController extends BaseController
         return $this->sendResponse($stats, 'Document statistics retrieved successfully');
     }
 }
+
 
