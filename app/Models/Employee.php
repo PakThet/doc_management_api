@@ -72,6 +72,11 @@ class Employee extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function documents()
+    {
+        return $this->hasMany(Document::class);
+    }
+
     public function branch()
     {
         return $this->belongsTo(Branch::class);
@@ -120,3 +125,5 @@ class Employee extends Model
         return $query->where('department_id', $departmentId);
     }
 }
+
+

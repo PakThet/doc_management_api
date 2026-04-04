@@ -19,6 +19,7 @@ class DocumentRequest extends FormRequest
 
         return [
             'branch_id' => 'required|exists:branches,id',
+            'employee_id' => 'nullable|exists:employees,id',
             'document_category_id' => 'nullable|exists:document_categories,id',
             'document_prefix_id' => 'nullable|exists:document_prefixes,id',
             'title' => 'required|string|max:255',

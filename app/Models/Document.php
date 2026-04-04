@@ -16,6 +16,7 @@ class Document extends Model
     protected $fillable = [
         'organization_id',
         'branch_id',
+        'employee_id',
         'document_category_id',
         'document_prefix_id',
         'created_by',
@@ -52,6 +53,11 @@ class Document extends Model
     public function organization()
     {
         return $this->belongsTo(Organization::class);
+    }
+
+    public function employee()
+    {
+        return $this->belongsTo(Employee::class);
     }
 
     public function branch()
@@ -99,7 +105,8 @@ class Document extends Model
 
     public function scopeByBranch($query, $branchId)
     {
-        return $query->where('branch_id', $branchId);
+        return $query->where('branch_id',
+        'employee_id', $branchId);
     }
 
     public function scopeExpired($query)
@@ -113,3 +120,4 @@ class Document extends Model
         return $query->whereBetween('expiration_date', [now(), now()->addDays($days)]);
     }
 }
+
