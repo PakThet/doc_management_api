@@ -88,19 +88,21 @@ class DocumentController extends BaseController
         if (isset($data['document_prefix_id'])) {
             $prefix = DocumentPrefix::find($data['document_prefix_id']);
             if ($prefix) {
-                $lastDocument = Document::withTrashed()->where('document_prefix_id', $prefix->id)
-                    ->whereYear('created_at', now()->year)
-                    ->orderBy('id', 'desc')->lockForUpdate()
+                $baseCode = $prefix->format;
+                $baseCode = str_replace('{prefix}', $prefix->prefix, $baseCode);
+                $baseCode = str_replace('{separator}', $prefix->separator, $baseCode);
+                $baseCode = str_replace('{year}', now()->format('Y'), $baseCode);
+                $baseCode = str_replace('{month}', now()->format('m'), $baseCode);
+                $baseCode = str_replace('{day}', now()->format('d'), $baseCode);
+
+                $baseCodePrefix = str_replace('{number}', '', $baseCode);
+                $lastDocument = Document::withTrashed()->where('document_code', 'like', $baseCodePrefix . '%')
+                    ->orderBy('document_code', 'desc')->lockForUpdate()
                     ->first();
 
-                $nextNumber = 1; if ($lastDocument && preg_match('/(\d+)\$/', $lastDocument->document_code, $matches)) { $nextNumber = intval($matches[1]) + 1; }
+                $nextNumber = 1; if ($lastDocument && preg_match('/(\d+)$/', $lastDocument->document_code, $matches)) { $nextNumber = intval($matches[1]) + 1; }
 
-                $code = $prefix->format;
-                $code = str_replace('{prefix}', $prefix->prefix, $code);
-                $code = str_replace('{separator}', $prefix->separator, $code);
-                $code = str_replace('{year}', now()->format('Y'), $code);
-                $code = str_replace('{month}', now()->format('m'), $code);
-                $code = str_replace('{day}', now()->format('d'), $code);
+                $code = $baseCode;
                 $code = str_replace('{number}', str_pad($nextNumber, 5, '0', STR_PAD_LEFT), $code);
 
                 $data['document_code'] = $code;
@@ -296,6 +298,8 @@ class DocumentController extends BaseController
         return $this->sendResponse($stats, 'Document statistics retrieved successfully');
     }
 }
+
+
 
 
 
