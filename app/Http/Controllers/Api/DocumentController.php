@@ -90,10 +90,10 @@ class DocumentController extends BaseController
             if ($prefix) {
                 $lastDocument = Document::withTrashed()->where('document_prefix_id', $prefix->id)
                     ->whereYear('created_at', now()->year)
-                    ->orderBy('id', 'desc')
+                    ->orderBy('id', 'desc')->lockForUpdate()
                     ->first();
 
-                $nextNumber = $lastDocument ? intval(substr($lastDocument->document_code, -5)) + 1 : 1;
+                $nextNumber = 1; if ($lastDocument && preg_match('/(\d+)\$/', $lastDocument->document_code, $matches)) { $nextNumber = intval($matches[1]) + 1; }
 
                 $code = $prefix->format;
                 $code = str_replace('{prefix}', $prefix->prefix, $code);
@@ -296,5 +296,10 @@ class DocumentController extends BaseController
         return $this->sendResponse($stats, 'Document statistics retrieved successfully');
     }
 }
+
+
+
+
+
 
 
