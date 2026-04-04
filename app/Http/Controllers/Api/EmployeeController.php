@@ -69,7 +69,7 @@ class EmployeeController extends BaseController
     public function show(Employee $employee)
     {
         return $this->sendResponse(
-            new EmployeeResource($employee->load(['organization', 'branch', 'department', 'user', 'headedDepartment', 'documents']\)),
+            new EmployeeResource($employee->load(['organization', 'branch', 'department', 'user', 'headedDepartment', 'assignedDocuments'])),
             'Employee retrieved successfully'
         );
     }
@@ -184,6 +184,7 @@ class EmployeeController extends BaseController
         return $this->sendResponse($stats, 'Employee statistics retrieved successfully');
     }
 }
+
 
 
 
