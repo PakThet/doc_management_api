@@ -43,6 +43,7 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/me/avatar', [AuthController::class, 'updateAvatar']);
+    Route::put('/me/password', [AuthController::class, 'updatePassword']);
 
     /*
     |--------------------------------------------------------------------------
@@ -150,4 +151,5 @@ Route::middleware(['auth:api'])->group(function () {
     Route::get('permissions', [PermissionController::class, 'index']);
     Route::get('users/{user}/permissions', [PermissionController::class, 'getPermissions']);
 });
+
 

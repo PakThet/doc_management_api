@@ -140,6 +140,28 @@ class AuthController extends BaseController
     /**
      * Update user avatar
      */
+    public function updatePassword(\Illuminate\Http\Request $request)
+    {
+        $request->validate([
+            'old_password' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $user = $request->user();
+
+        if (!\Illuminate\Support\Facades\Hash::check($request->old_password, $user->password)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'old_password' => ['The provided old password does not match our records.'],
+            ]);
+        }
+
+        $user->password = \Illuminate\Support\Facades\Hash::make($request->password);
+        $user->password_changed_at = now();
+        $user->save();
+
+        return $this->sendResponse(new \App\Http\Resources\UserResource($user), 'Password updated successfully');
+    }
+
     public function updateAvatar(\Illuminate\Http\Request $request)
     {
         $request->validate([
@@ -209,4 +231,5 @@ class AuthController extends BaseController
         return $this->sendError('Unable to reset password', ['email' => __($status)], 400);
     }
 }
+
 
