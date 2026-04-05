@@ -109,6 +109,10 @@ class DocumentController extends BaseController
             }
         }
 
+        if (!isset($data['document_code'])) {
+            $data['document_code'] = 'DOC-' . now()->format('Ymd') . '-' . strtoupper(Str::random(6));
+        }
+
         // Handle file upload
         if ($request->hasFile('file')) {
             $file = $request->file('file');
@@ -298,6 +302,8 @@ class DocumentController extends BaseController
         return $this->sendResponse($stats, 'Document statistics retrieved successfully');
     }
 }
+
+
 
 
 
