@@ -37,7 +37,7 @@ class EmployeeResource extends JsonResource
             'emergency_contact_phone' => $this->emergency_contact_phone,
             'bank_details' => $this->bank_details,
             'documents' => $this->documents,
-            'assigned_documents' => DocumentResource::collection($this->whenLoaded('assignedDocuments')),
+            'assigned_documents' => $this->whenLoaded('assignedDocuments', function() { return DocumentResource::collection($this->assignedDocuments); }),
             'metadata' => $this->metadata,
             'user' => new UserResource($this->whenLoaded('user')),
             'branch' => new BranchResource($this->whenLoaded('branch')),
@@ -49,5 +49,6 @@ class EmployeeResource extends JsonResource
         ];
     }
 }
+
 
 
